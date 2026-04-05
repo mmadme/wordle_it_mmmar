@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PAGES_API_BASE: ${{ vars.PAGES_API_BASE_URL }}
+  PAGES_API_BASE: ${{ secrets.PAGES_API_BASE_URL }}
 
 jobs:
   build:

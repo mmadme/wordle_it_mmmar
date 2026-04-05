@@ -14,6 +14,13 @@
 - `python3 -m py_compile build.py build_github_pages.py serve_local.py report_playtest.py`
 - `python3 build_github_pages.py --api-base https://<backend-domain>`
 
+## 2026-04-05 - Harden workflow config
+
+### Modificato
+
+- workflow GitHub Pages aggiornato per leggere `PAGES_API_BASE_URL` da una repository secret invece che da una repository variable
+- README e guida setup GitHub allineati all'uso di una secret per non esporre inutilmente l'endpoint backend
+
 ## 2026-04-05 - Fase HTTPS backend con Caddy
 
 ### Modificato

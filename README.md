@@ -75,7 +75,7 @@ La repo include un workflow GitHub Actions che:
 - esegue la build del frontend
 - genera `github_pages/`
 - pubblica automaticamente il sito su GitHub Pages
-- legge l'URL backend da una variabile del repository
+- legge l'URL backend da una secret del repository
 
 Workflow:
 
@@ -85,7 +85,7 @@ Per attivarlo su GitHub:
 
 1. crea la repository remota
 2. fai push del branch `main`
-3. in GitHub vai su `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`
+3. in GitHub vai su `Settings` -> `Secrets and variables` -> `Actions` -> `Secrets`
 4. crea `PAGES_API_BASE_URL` con il valore del backend reale
 5. in GitHub vai su `Settings` -> `Pages`
 6. imposta `Source` su `GitHub Actions`

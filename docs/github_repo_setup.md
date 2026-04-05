@@ -22,8 +22,8 @@ e pubblica il contenuto generato in `github_pages/`.
 
 1. creare una nuova repository vuota
 2. fare push del branch `main`
-3. aprire `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`
-4. creare la variabile `PAGES_API_BASE_URL` con il valore del backend reale
+3. aprire `Settings` -> `Secrets and variables` -> `Actions` -> `Secrets`
+4. creare la secret `PAGES_API_BASE_URL` con il valore del backend reale
 5. aprire `Settings` -> `Pages`
 6. scegliere `Source: GitHub Actions`
 7. attendere il primo workflow completato
