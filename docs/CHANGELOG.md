@@ -12,13 +12,13 @@
 ### Verificato
 
 - `python3 -m py_compile build.py build_github_pages.py serve_local.py report_playtest.py`
-- `python3 build_github_pages.py --api-base https://sborraparle.duckdns.org`
+- `python3 build_github_pages.py --api-base https://<backend-domain>`
 
 ## 2026-04-05 - Fase HTTPS backend con Caddy
 
 ### Modificato
 
-- `deploy/caddy/Caddyfile.example` semplificato con dominio esplicito `sborraparle.duckdns.org` e reverse proxy verso `127.0.0.1:8015`.
+- `deploy/caddy/Caddyfile.example` semplificato con dominio placeholder e reverse proxy verso `127.0.0.1:8015`.
 - `docs/backend_https_caddy.md` aggiornato con la procedura reale adottata sulla VPS e con la diagnostica del blocco residuo.
 - `docs/patch.md` aggiornato con lo stato corrente del reverse proxy HTTPS.
 
@@ -27,11 +27,11 @@
 - `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`
 - `caddy.service` attivo dopo `restart`
 - listener locali attivi su `*:80` e `*:443`
-- `curl -I --resolve sborraparle.duckdns.org:80:127.0.0.1 http://sborraparle.duckdns.org` con `308 Permanent Redirect`
+- `curl -I --resolve <backend-domain>:80:127.0.0.1 http://<backend-domain>` con `308 Permanent Redirect`
 
 ### Blocco aperto
 
-- emissione certificato TLS ancora non completata: Let's Encrypt vede `92.4.220.150` ma riceve timeout durante il challenge, quindi resta da sistemare l'accesso pubblico a `80/443` lato Oracle Cloud
+- emissione certificato TLS ancora dipendente dalla raggiungibilita' pubblica di `80/443`, quindi lato Oracle Cloud va sempre verificata l'apertura esterna
 
 ## 2026-04-05 - Piano patch GitHub
 
@@ -121,9 +121,9 @@
 ### Verificato
 
 - cron job DuckDNS presente ed attivo
-- configurazione reale DuckDNS presente per il dominio `sborraparle`
-- risoluzione DNS verificata verso `92.4.220.150`
-- backend raggiungibile via `http://sborraparle.duckdns.org:8015/parole-infinito.html`
+- configurazione reale DuckDNS presente per un dominio dedicato non riportato nel repo pubblico
+- risoluzione DNS verificata verso il public IP della VPS
+- backend raggiungibile via hostname dedicato su porta `8015`
 
 ## 2026-04-05 - Fase 6 preparazione systemd
 
@@ -153,14 +153,14 @@
 - `woordle-backend-test.service` risulta `active`
 - `woordle-backend-test.service` risulta `enabled`
 - `curl -I http://127.0.0.1:8015/parole-infinito.html` -> `200`
-- `curl -I http://sborraparle.duckdns.org:8015/parole-infinito.html` -> `200`
+- `curl -I http://<backend-domain>:8015/parole-infinito.html` -> `200`
 
 ## 2026-04-05 - Strategia HTTPS backend
 
 ### Modificato
 
 - Aggiunto `deploy/caddy/Caddyfile.example` come base per reverse proxy HTTPS con Caddy.
-- Aggiunta guida `docs/backend_https_caddy.md` per esporre il backend su `https://sborraparle.duckdns.org`.
+- Aggiunta guida `docs/backend_https_caddy.md` per esporre il backend su un dominio HTTPS dedicato.
 
 ### Verificato
 

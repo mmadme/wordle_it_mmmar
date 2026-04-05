@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PAGES_API_BASE: https://sborraparle.duckdns.org
+  PAGES_API_BASE: ${{ vars.PAGES_API_BASE_URL }}
 
 jobs:
   build:

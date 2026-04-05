@@ -30,7 +30,7 @@ Scelta consigliata:
 
 Dominio previsto:
 
-- `sborraparle.duckdns.org`
+- `backend.example.com`
 
 ## Riferimenti ufficiali
 
@@ -45,7 +45,7 @@ Dominio previsto:
 - porte `80` e `443` aperte:
   - su Oracle Cloud
   - nel firewall della VM
-- `sborraparle.duckdns.org` che risolve verso la VPS
+- hostname backend che risolve verso la VPS
 
 ## File preparati nel progetto
 
@@ -56,7 +56,7 @@ Dominio previsto:
 Configurazione minimale adottata per questa VPS:
 
 ```caddy
-sborraparle.duckdns.org {
+backend.example.com {
 	reverse_proxy 127.0.0.1:8015
 }
 ```
@@ -111,18 +111,18 @@ sudo systemctl status caddy
 Verifica minima eseguita con successo su questa VPS:
 
 ```bash
-curl -I --resolve sborraparle.duckdns.org:80:127.0.0.1 http://sborraparle.duckdns.org
+curl -I --resolve <backend-domain>:80:127.0.0.1 http://<backend-domain>
 ```
 
 Risultato atteso:
 
 - `HTTP/1.1 308 Permanent Redirect`
-- `Location: https://sborraparle.duckdns.org/`
+- `Location: https://<backend-domain>/`
 
 ### 6. Verificare HTTPS pubblico
 
 ```bash
-curl -I https://sborraparle.duckdns.org
+curl -I https://<backend-domain>
 ```
 
 Nota:
@@ -146,7 +146,7 @@ Blocco attuale:
 - Let\'s Encrypt fallisce il challenge con:
 
 ```text
-92.4.220.150: Timeout during connect (likely firewall problem)
+<backend-public-ip>: Timeout during connect (likely firewall problem)
 ```
 
 Interpretazione pratica:
@@ -199,7 +199,7 @@ sudo systemctl restart woordle-backend
 Quando HTTPS backend sara' attivo, il frontend Pages andra' rigenerato con:
 
 ```bash
-python3 build_github_pages.py --api-base https://sborraparle.duckdns.org
+python3 build_github_pages.py --api-base https://<backend-domain>
 ```
 
 Questo produrra' un `github_pages/api-config.js` coerente con il backend finale.
@@ -213,4 +213,4 @@ Questo produrra' un `github_pages/api-config.js` coerente con il backend finale.
 - [x] `systemctl restart caddy` ok
 - [x] redirect HTTP locale verificato
 - [ ] backend raggiungibile in HTTPS
-- [ ] frontend GitHub Pages rigenerato con API base `https://sborraparle.duckdns.org`
+- [ ] frontend GitHub Pages rigenerato con API base `https://<backend-domain>`

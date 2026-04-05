@@ -4,7 +4,7 @@ Versione di lavoro di `Parole Infinito` preparata per una futura architettura ib
 
 - frontend statico pubblicabile su GitHub Pages
 - backend Python + SQLite mantenuto sulla VPS Ubuntu
-- hostname stabile del backend su `https://sborraparle.duckdns.org`
+- backend remoto configurabile senza hardcode nel frontend
 
 Questa cartella e' separata dalla versione attiva `woordle_new` per evitare regressioni durante la migrazione.
 
@@ -18,13 +18,7 @@ La variante `woordle_new_github` e' gia' pronta su questi punti:
 - reverse proxy HTTPS tramite Caddy
 - pacchetto statico esportabile per GitHub Pages con `build_github_pages.py`
 
-Backend finale attuale:
-
-- `https://sborraparle.duckdns.org`
-
-Porta interna del backend:
-
-- `8015`
+I dettagli operativi del backend reale non sono riportati nel README pubblico.
 
 ## Struttura del progetto
 
@@ -58,19 +52,6 @@ Avvio locale:
 python3 serve_local.py --host 127.0.0.1 --port 8015 --open
 ```
 
-## Avvio pubblico su VPS
-
-Avvio manuale:
-
-```bash
-./share_public.sh --public-host sborraparle.duckdns.org
-```
-
-Nel setup definitivo della VPS e' preferibile usare:
-
-- `woordle-backend-test.service` su `8015`
-- Caddy su `80/443`
-
 ## Generare il frontend per GitHub Pages
 
 Il frontend statico viene esportato in `github_pages/`.
@@ -78,7 +59,7 @@ Il frontend statico viene esportato in `github_pages/`.
 Comando consigliato:
 
 ```bash
-python3 build_github_pages.py --api-base https://sborraparle.duckdns.org
+python3 build_github_pages.py --api-base https://<backend-domain>
 ```
 
 Output principale:
@@ -94,6 +75,7 @@ La repo include un workflow GitHub Actions che:
 - esegue la build del frontend
 - genera `github_pages/`
 - pubblica automaticamente il sito su GitHub Pages
+- legge l'URL backend da una variabile del repository
 
 Workflow:
 
@@ -103,8 +85,10 @@ Per attivarlo su GitHub:
 
 1. crea la repository remota
 2. fai push del branch `main`
-3. in GitHub vai su `Settings` -> `Pages`
-4. imposta `Source` su `GitHub Actions`
+3. in GitHub vai su `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`
+4. crea `PAGES_API_BASE_URL` con il valore del backend reale
+5. in GitHub vai su `Settings` -> `Pages`
+6. imposta `Source` su `GitHub Actions`
 
 GitHub Docs ufficiale:
 
@@ -132,6 +116,7 @@ Questa repo non deve includere:
 - database playtest reali
 - log runtime
 - file con token o segreti
+- URL backend reali dove non sono strettamente necessari
 
 Per questo i file locali sensibili e generati sono esclusi tramite `.gitignore`.
 
@@ -141,6 +126,7 @@ Per questo i file locali sensibili e generati sono esclusi tramite `.gitignore`.
 - [Backend DuckDNS](docs/backend_hostname_duckdns.md)
 - [Backend systemd](docs/backend_service_systemd.md)
 - [Backend HTTPS con Caddy](docs/backend_https_caddy.md)
+- [Setup repo GitHub](docs/github_repo_setup.md)
 - [Changelog](docs/CHANGELOG.md)
 
 ## Nota importante

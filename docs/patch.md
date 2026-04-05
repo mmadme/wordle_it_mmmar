@@ -457,11 +457,11 @@ Questa fase quindi va letta anche in funzione di:
   - aggiunto script `duckdns/update_duckdns.sh` per aggiornare il record DNS dal server
   - aggiunto file `duckdns/duckdns.env.example` per configurare dominio e token
   - aggiunta guida operativa `docs/backend_hostname_duckdns.md`
-  - configurazione reale DuckDNS presente con dominio `sborraparle`
+  - configurazione reale DuckDNS presente con un dominio dedicato non riportato nel repo pubblico
   - cron job confermato con esecuzione ogni 5 minuti
   - log DuckDNS verificato con ultimo stato `OK`
-  - `sborraparle.duckdns.org` risolve verso `92.4.220.150`
-  - backend verificato raggiungibile via `http://sborraparle.duckdns.org:8015/parole-infinito.html`
+  - l'hostname backend reale risolve verso il public IP della VPS
+  - backend verificato raggiungibile via hostname dedicato su porta `8015`
   - HTTPS del backend resta fuori da questa fase e verra' trattato successivamente
 
 ---
@@ -501,7 +501,7 @@ Evitare avvio manuale fragile e migliorare affidabilita' del backend.
   - `woordle-backend-test.service` risulta `active` ed `enabled`
   - la porta `8015` e' stata confermata come porta definitiva del backend per questa variante
   - `curl -I http://127.0.0.1:8015/parole-infinito.html` -> `200`
-  - `curl -I http://sborraparle.duckdns.org:8015/parole-infinito.html` -> `200`
+  - `curl -I http://<backend-domain>:8015/parole-infinito.html` -> `200`
 
 ---
 
@@ -705,7 +705,7 @@ Usare questa sezione come log breve e cumulativo.
 - chiarita la strategia HTTPS del backend con Caddy davanti al servizio Python
 - completata la stabilizzazione del backend VPS su `8015` con servizio `systemd` attivo
 - configurato Caddy come reverse proxy su `80/443` con redirect HTTP locale funzionante
-- verificato che l'emissione del certificato TLS e' bloccata da timeout esterno su `92.4.220.150:80/443`, quindi resta da completare l'apertura pubblica lato Oracle Cloud
+- verificato che l'emissione del certificato TLS puo' bloccarsi per timeout esterno su `80/443`, quindi l'apertura pubblica lato Oracle Cloud resta un punto critico da controllare
 
 ---
 
@@ -719,7 +719,7 @@ Motivo:
 
 - frontend GitHub Pages, hostname stabile, servizio `systemd` e reverse proxy locale sono gia' pronti
 - il blocco principale rimasto per l'architettura finale e' il timeout esterno sul challenge TLS di Let's Encrypt
-- appena `https://sborraparle.duckdns.org` rispondera' correttamente potremo rigenerare `github_pages/api-config.js` con l'URL finale
+- appena `https://<backend-domain>` rispondera' correttamente potremo rigenerare `github_pages/api-config.js` con l'URL finale
 
 ## Riferimenti ufficiali
 

@@ -55,7 +55,7 @@ Stato operativo corrente:
 URL di test atteso:
 
 ```text
-http://sborraparle.duckdns.org:8015/parole-infinito.html
+http://<backend-domain>:8015/parole-infinito.html
 ```
 
 ### Installazione del service su porta `8015`
@@ -107,7 +107,7 @@ journalctl -u woordle-backend-test -f
 ```bash
 ss -ltnp | grep 8015
 curl -I http://127.0.0.1:8015/parole-infinito.html
-curl -I http://sborraparle.duckdns.org:8015/parole-infinito.html
+curl -I http://<backend-domain>:8015/parole-infinito.html
 ```
 
 #### 7. Se vuoi provarlo da fuori

@@ -13,7 +13,7 @@ Questa guida serve a trasformare `woordle_new_github` in una repository GitHub p
 Il workflow esegue:
 
 ```bash
-python3 build_github_pages.py --api-base https://sborraparle.duckdns.org
+python3 build_github_pages.py --api-base "${PAGES_API_BASE_URL}"
 ```
 
 e pubblica il contenuto generato in `github_pages/`.
@@ -22,9 +22,17 @@ e pubblica il contenuto generato in `github_pages/`.
 
 1. creare una nuova repository vuota
 2. fare push del branch `main`
-3. aprire `Settings` -> `Pages`
-4. scegliere `Source: GitHub Actions`
-5. attendere il primo workflow completato
+3. aprire `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`
+4. creare la variabile `PAGES_API_BASE_URL` con il valore del backend reale
+5. aprire `Settings` -> `Pages`
+6. scegliere `Source: GitHub Actions`
+7. attendere il primo workflow completato
+
+Esempio di valore:
+
+```text
+https://backend.example.com
+```
 
 ## Procedura minima da terminale
 
