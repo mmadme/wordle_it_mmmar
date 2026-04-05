@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+
+# Build artifacts
+dist/
+github_pages/
+
+# Local runtime data
+data/playtest.db
+data/playtest_events.csv
+data/*.log
+
+# Local secrets and dynamic DNS state
+duckdns/duckdns.env
+duckdns/*.log
+
+# Local environment overrides
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

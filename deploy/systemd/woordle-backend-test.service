@@ -1,0 +1,19 @@
+[Unit]
+Description=Woordle backend API test service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Desktop/grouphelp/woordleubuntu/woordle_new_github
+EnvironmentFile=/etc/woordle-backend-test.env
+ExecStart=/home/ubuntu/Desktop/grouphelp/woordleubuntu/woordle_new_github/run_backend_service.sh
+Environment=WOORDLE_BACKEND_ENV_FILE=/etc/woordle-backend-test.env
+Restart=always
+RestartSec=3
+KillSignal=SIGINT
+SyslogIdentifier=woordle-backend-test
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Par🇮🇹le ∞</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0e1016;
+  --surface:  #181b24;
+  --border:   #272b3a;
+  --green:    #4a8c52;
+  --yellow:   #a88c2e;
+  --gray:     #3a3d4c;
+  --white:    #dde1f0;
+  --dim:      #5a5e74;
+  --accent:   #4f5fd4;
+  --tile-bg:  #181b24;
+  --tile-br:  #333749;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-height: 100dvh;
+}
+
+/* ── HEADER ── */
+header {
+  width: 100%; max-width: 500px;
+  padding: 10px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.logo {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 20px; letter-spacing: 1px;
+}
+.logo span { color: var(--accent); }
+.header-btns { display: flex; gap: 6px; }
+.hbtn {
+  background: none; border: 1px solid var(--border);
+  color: var(--dim); border-radius: 8px;
+  width: 34px; height: 34px; font-size: 15px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s;
+}
+.hbtn:hover { border-color: var(--accent); color: var(--white); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; top: 60px; left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+  background: var(--white); color: #0e1016;
+  padding: 8px 18px; border-radius: 999px;
+  font-weight: 700; font-size: 14px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 300; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── GRIGLIA ── */
+#grid-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 6px 0; overflow: hidden;
+}
+#grid { display: flex; flex-direction: column; gap: 5px; }
+.row  { display: flex; gap: 5px; }
+
+.tile {
+  width: 58px; height: 58px;
+  border: 2px solid var(--tile-br);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Archivo Black', sans-serif; font-size: 30px;
+  color: var(--white); background: var(--tile-bg);
+  user-select: none;
+}
+/* lettera digitata ma non ancora confermata */
+.tile.filled {
+  border-color: #4a4e66;
+  color: var(--white);  /* esplicito: evita problemi di ereditarietà */
+}
+/* colori dopo conferma */
+.tile.green  { background: var(--green);  border-color: var(--green);  color: #fff; }
+.tile.yellow { background: var(--yellow); border-color: var(--yellow); color: #fff; }
+.tile.gray   { background: var(--gray);   border-color: var(--gray);   color: #fff; }
+
+@keyframes pop {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.12); }
+}
+@keyframes shake {
+  0%,100%      { transform: translateX(0); }
+  20%,60% { transform: translateX(-5px); }
+  40%,80% { transform: translateX(5px); }
+}
+@keyframes flipOut {
+  from { transform: rotateX(0deg); }
+  to   { transform: rotateX(-90deg); }
+}
+@keyframes flipIn {
+  from { transform: rotateX(90deg); }
+  to   { transform: rotateX(0deg); }
+}
+@keyframes bounce {
+  0%,100% { transform: translateY(0); }
+  40%     { transform: translateY(-18px); }
+  70%     { transform: translateY(-8px); }
+}
+
+.tile.animate-pop   { animation: pop .1s ease; }
+.tile.animate-shake { animation: shake .4s ease; }
+.tile.animate-bounce{ animation: bounce .5s ease; }
+
+/* ── TASTIERA ── */
+#keyboard {
+  width: 100%; max-width: 500px;
+  padding: 6px 8px calc(14px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 5px; align-items: center;
+  flex-shrink: 0;
+}
+.kb-row { display: flex; gap: 4px; width: 100%; }
+.key {
+  height: 54px; min-width: 36px; padding: 0 5px;
+  border: none; border-radius: 4px;
+  background: #252836; color: var(--white);
+  font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 13px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s, transform .08s;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+  flex: 1;
+}
+.key:active { transform: scale(.93); }
+.key.wide   { flex: 1.7; font-size: 12px; }
+.key.green  { background: var(--green); color: #fff; }
+.key.yellow { background: var(--yellow); color: #fff; }
+.key.gray   { background: #2a2c38; color: #555; }
+
+/* ── MODALE ── */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.75); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px 22px;
+  width: min(94%, 390px); text-align: center; position: relative;
+  animation: slideUp .25s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.modal h2 {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 22px; letter-spacing: 1px; margin-bottom: 4px;
+}
+.modal .parola {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 34px; letter-spacing: 4px;
+  color: var(--accent); margin: 10px 0 4px;
+}
+.modal .sub { color: var(--dim); font-size: 13px; margin-bottom: 18px; }
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin: 14px 0;
+}
+.sbox {
+  background: var(--bg); border-radius: 10px; padding: 10px 4px;
+}
+.snum {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 28px; color: var(--accent);
+}
+.slabel { font-size: 11px; color: var(--dim); line-height: 1.4; }
+.emoji-grid { font-size: 22px; line-height: 1.7; margin: 10px 0; letter-spacing: 1px; }
+.btn-primary {
+  width: 100%; padding: 13px; margin-top: 10px;
+  background: var(--accent); color: #fff; border: none; border-radius: 10px;
+  font-family: 'Archivo Black', sans-serif; font-size: 17px; letter-spacing: 1px;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-secondary {
+  width: 100%; padding: 11px; margin-top: 6px;
+  background: none; border: 1px solid var(--border);
+  color: var(--dim); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 14px;
+  cursor: pointer; transition: border-color .15s;
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--white); }
+.close-btn {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--dim);
+  font-size: 20px; cursor: pointer; line-height: 1;
+}
+/* distribuzione tentativi */
+.dist { text-align: left; margin: 14px 0; }
+.dist-title { font-size: 11px; font-weight: 700; color: var(--dim); letter-spacing: 1px; margin-bottom: 8px; }
+.drow { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.dnum { width: 14px; font-size: 13px; font-weight: 700; color: var(--dim); text-align: right; }
+.dbar-bg { flex: 1; height: 20px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.dbar {
+  height: 100%; min-width: 22px;
+  background: var(--accent); border-radius: 3px;
+  display: flex; align-items: center; padding: 0 6px;
+  font-size: 12px; font-weight: 700; color: #fff;
+  transition: width .8s ease;
+}
+.dbar.win { background: var(--green); }
+/* aiuto */
+.help-example { display: flex; align-items: center; gap: 10px; margin: 8px 0; text-align: left; }
+.help-tile {
+  width: 40px; height: 40px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Archivo Black', sans-serif; font-size: 20px; color: #fff;
+  flex-shrink: 0;
+}
+.help-tile.green  { background: var(--green); }
+.help-tile.yellow { background: var(--yellow); }
+.help-tile.gray   { background: var(--gray); }
+.help-text { font-size: 13px; color: var(--dim); line-height: 1.5; }
+.help-text strong { color: var(--white); }
+
+@media (max-width: 420px) {
+  #keyboard {
+    padding: 10px 4px calc(16px + env(safe-area-inset-bottom));
+    gap: 4px;
+  }
+  .kb-row { gap: 3px; }
+  .key {
+    min-width: 0;
+    height: 52px;
+    padding: 0 3px;
+    font-size: 12px;
+  }
+  .key.wide {
+    flex: 1.55;
+    font-size: 11px;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Par🇮🇹le <span id="mode-badge">∞</span></div>
+  <div class="header-btns">
+    <button class="hbtn" id="btn-mode" title="Modalità giornaliera">24H</button>
+    <button class="hbtn" id="btn-stats" title="Statistiche">📊</button>
+    <button class="hbtn" id="btn-help"  title="Come si gioca">❓</button>
+  </div>
+</header>
+
+<div id="toast"></div>
+<div id="grid-wrap"><div id="grid"></div></div>
+
+<div id="keyboard">
+  <div class="kb-row" id="kb0"></div>
+  <div class="kb-row" id="kb1"></div>
+  <div class="kb-row" id="kb2"></div>
+</div>
+
+<!-- modale fine partita -->
+<div class="overlay" id="m-end">
+  <div class="modal">
+    <button class="close-btn" id="c-end">✕</button>
+    <h2 id="end-titolo"></h2>
+    <div class="parola" id="end-parola"></div>
+    <div class="sub"    id="end-sub"></div>
+    <div class="emoji-grid" id="end-emoji"></div>
+    <div class="stats-row">
+      <div class="sbox"><div class="snum" id="s1">0</div><div class="slabel">Partite</div></div>
+      <div class="sbox"><div class="snum" id="s2">0</div><div class="slabel">Vinte %</div></div>
+      <div class="sbox"><div class="snum" id="s3">0</div><div class="slabel">Streak</div></div>
+      <div class="sbox"><div class="snum" id="s4">0</div><div class="slabel">Record</div></div>
+    </div>
+    <button class="btn-secondary" id="btn-share">Condividi</button>
+    <button class="btn-primary"   id="btn-nuova">▶ NUOVA PARTITA</button>
+    <button class="btn-secondary" id="btn-close-end">Chiudi</button>
+  </div>
+</div>
+
+<!-- modale statistiche -->
+<div class="overlay" id="m-stats">
+  <div class="modal">
+    <button class="close-btn" id="c-stats">✕</button>
+    <h2>Statistiche</h2>
+    <div class="stats-row">
+      <div class="sbox"><div class="snum" id="ss1">0</div><div class="slabel">Partite</div></div>
+      <div class="sbox"><div class="snum" id="ss2">0</div><div class="slabel">Vinte %</div></div>
+      <div class="sbox"><div class="snum" id="ss3">0</div><div class="slabel">Streak</div></div>
+      <div class="sbox"><div class="snum" id="ss4">0</div><div class="slabel">Record</div></div>
+    </div>
+    <div class="dist" id="dist"></div>
+  </div>
+</div>
+
+<!-- modale aiuto -->
+<div class="overlay" id="m-help">
+  <div class="modal">
+    <button class="close-btn" id="c-help">✕</button>
+    <h2>Come si gioca</h2>
+    <p style="color:var(--dim);font-size:13px;line-height:1.7;margin:12px 0 16px">
+      Indovina la parola di 5 lettere in <strong style="color:var(--white)">6 tentativi</strong>.
+      Dopo ogni tentativo i colori indicano:
+    </p>
+    <div class="help-example">
+      <div class="help-tile green">C</div>
+      <div class="help-text"><strong>Verde</strong> — lettera corretta, posizione corretta</div>
+    </div>
+    <div class="help-example">
+      <div class="help-tile yellow">A</div>
+      <div class="help-text"><strong>Giallo</strong> — lettera presente nella parola, posizione sbagliata</div>
+    </div>
+    <div class="help-example">
+      <div class="help-tile gray">S</div>
+      <div class="help-text"><strong>Grigio</strong> — lettera non presente nella parola</div>
+    </div>
+    <p style="color:var(--dim);font-size:12px;margin-top:16px;line-height:1.6">
+      Vocabolario: <strong style="color:var(--white)">pietroppeter/wordle-it</strong> (curated.txt + word_list.txt)<br>
+      Modalità <strong style="color:var(--white)">∞</strong>: partite infinite casuali.<br>
+      Modalità <strong style="color:var(--white)">24H</strong>: una parola al giorno uguale per tutti.
+    </p>
+  </div>
+</div>
+
+<script src="./api-config.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════
+//  VOCABOLARIO
+//  Generato da build.py — non modificare a mano.
+//
+//  SOLUZIONI : parole che il gioco sceglie come risposta
+//              (da curated.txt di pietroppeter/wordle-it)
+//
+//  TENTATIVI : Set di tutte le parole accettate come guess
+//              (da word_list.txt + soluzioni,
+//               costruito a runtime sotto)
+//
+//  !! build.py sostituisce le due righe tra i tag
+//     // --VOCAB-START-- e // --VOCAB-END--
+// ══════════════════════════════════════════════════════════
+
+// --VOCAB-START--
+const SOLUZIONI = [
+    "abaco", "abate", "abbia", "abeti", "abile", "abito", "abusa", "acari",
+    "acero", "aceto", "acida", "acino", "acqua", "acume", "acuti", "adagi",
+    "addio", "adipe", "adito", "adone", "adori", "adula", "aduso", "aerea",
+    "aereo", "afidi", "afona", "afoso", "agape", "agata", "agave", "agile",
+    "agire", "agito", "aglio", "agone", "aiuto", "alate", "album", "alcol",
+    "alghe", "alibi", "alice", "alito", "alone", "altra", "alveo", "amaca",
+    "amala", "amaro", "amato", "ambra", "ameba", "ameni", "amici", "amido",
+    "amore", "ampio", "anche", "ancia", "anelo", "aneto", "anice", "animo",
+    "annoi", "annuo", "anodo", "ansia", "antro", "aorta", "apice", "apnea",
+    "arabi", "arare", "archi", "ardua", "arena", "arida", "arnia", "aroma",
+    "arpie", "ascia", "asilo", "asino", "asola", "aspri", "assai", "astio",
+    "astro", "atomo", "atrio", "audio", "aureo", "avari", "avena", "avere",
+    "avido", "avito", "avolo", "avrai", "avuto", "avvio", "azero", "azoto",
+    "babau", "babbo", "bacca", "bachi", "bacio", "badia", "baffi", "bagno",
+    "baita", "baldo", "balia", "balle", "ballo", "balsa", "balzo", "bambu",
+    "banca", "banco", "bande", "barba", "barca", "bardo", "bario", "barra",
+    "basco", "basso", "basta", "basto", "batte", "baule", "bazar", "bazza",
+    "beato", "becco", "beffa", "beghe", "belga", "bello", "belva", "benda",
+    "beone", "berci", "berlo", "biada", "bidet", "bieco", "bieta", "bigia",
+    "bimba", "birba", "birra", "bisca", "bisce", "bitta", "bivio", "bizze",
+    "blusa", "boato", "bocca", "bocce", "bolla", "bollo", "bomba", "bongo",
+    "bordi", "borgo", "borie", "borsa", "bosco", "botte", "botti", "bozza",
+    "brace", "brado", "brame", "brano", "bravi", "breve", "briga", "brina",
+    "brodo", "bruci", "bruco", "bruma", "bruno", "bruti", "bucce", "buchi",
+    "budda", "buffa", "bugie", "bulbo", "bullo", "buono", "burla", "burro",
+    "busso", "busta", "busti", "butta", "cacao", "cachi", "cacio", "cadde",
+    "cagna", "calca", "calce", "calci", "calco", "caldo", "calli", "calme",
+    "calva", "calze", "cambi", "cameo", "camma", "campa", "campo", "canea",
+    "canna", "canoa", "canto", "cappa", "capra", "cardo", "cargo", "carie",
+    "carme", "carne", "carpa", "carro", "carso", "carta", "carte", "casba",
+    "casco", "cassa", "casse", "casta", "causa", "cauto", "cavia", "cecio",
+    "cedro", "ceduo", "ceffo", "celia", "cella", "celti", "cenci", "cenge",
+    "cenno", "censo", "cento", "ceppo", "cerco", "cerro", "certa", "cervo",
+    "cesso", "cesta", "cetra", "chela", "cheta", "chilo", "china", "cicca",
+    "ciclo", "cieca", "cielo", "cifra", "cigli", "cigno", "cinse", "cinta",
+    "cippo", "circa", "circo", "cirri", "cisti", "ciuco", "clava", "clero",
+    "clima", "clone", "cloro", "clown", "cobra", "cocci", "cocco", "colgo",
+    "colla", "collo", "colma", "colmo", "colon", "colpe", "colpi", "colse",
+    "colta", "colza", "comma", "conca", "conci", "conga", "conio", "conta",
+    "conte", "conto", "copia", "coppa", "coppi", "copri", "corda", "corna",
+    "corpo", "corra", "corsa", "corso", "corte", "corto", "corvi", "cosca",
+    "cosce", "cosmo", "costa", "costi", "cotta", "cozze", "cozzo", "crani",
+    "credo", "crema", "crepe", "crepi", "creta", "crine", "crisi", "croce",
+    "croco", "croda", "croma", "cromo", "cruda", "cruna", "cucce", "cucio",
+    "culla", "culto", "cuoca", "cuoio", "cuore", "curia", "curio", "curry",
+    "curva", "daino", "dalia", "dammi", "danno", "danza", "dardo", "dazio",
+    "degna", "denso", "denti", "desco", "desio", "desta", "detto", "diari",
+    "dieci", "dieta", "dighe", "dillo", "dimmi", "dirmi", "disco", "disfa",
+    "disto", "ditta", "docce", "doghe", "dogma", "dolce", "donna", "doppi",
+    "dorma", "dorso", "dossi", "dotta", "draga", "drago", "droga", "drone",
+    "duale", "dubbi", "duchi", "duole", "duomo", "ebano", "ebbro", "ebreo",
+    "edema", "edera", "edile", "educa", "elevo", "elica", "elogi", "eludo",
+    "emana", "emiro", "entra", "epica", "epoca", "erano", "eredi", "eremo",
+    "erica", "erigo", "ernia", "eroga", "eroso", "esame", "esche", "esigo",
+    "esile", "esito", "esodo", "esoso", "espio", "estro", "esule", "etano",
+    "etere", "etica", "etnea", "etnia", "evaso", "evita", "extra", "facce",
+    "faggi", "faida", "faina", "falce", "falco", "falde", "fallo", "falso",
+    "fammi", "fango", "fanno", "fante", "farne", "farro", "farsa", "fasce",
+    "fatto", "fatuo", "fauci", "fauna", "felce", "felpa", "ferie", "fermo",
+    "ferro", "fesso", "festa", "fetta", "feudo", "fiabe", "fiala", "fiato",
+    "fibra", "fichi", "fieno", "fiera", "fiero", "figli", "finge", "finto",
+    "fioca", "fiore", "firma", "fisco", "fissa", "fitto", "fiume", "fiuto",
+    "flebo", "flora", "fobia", "foche", "fogli", "fogne", "foibe", "folla",
+    "folle", "folto", "fondo", "fonte", "forca", "forma", "forno", "forra",
+    "forse", "forte", "forum", "forza", "fosco", "fossa", "fosse", "foste",
+    "frana", "frase", "frasi", "frate", "frega", "fregi", "fremo", "freno",
+    "fresa", "frigo", "frode", "fruga", "fughe", "fulva", "fummo", "funge",
+    "fungo", "fuoco", "fuori", "furba", "furia", "furto", "fusto", "galea",
+    "gallo", "gamba", "gambo", "gamma", "ganci", "ganzo", "garbo", "garza",
+    "gassa", "gatto", "gazza", "gechi", "gelso", "gemma", "genio", "gente",
+    "gergo", "germe", "gesso", "gesti", "getto", "ghiro", "ghisa", "giace",
+    "giada", "giara", "gigli", "gioco", "giogo", "gioia", "giova", "giuro",
+    "glifo", "globo", "gnomo", "gobba", "gocce", "goffe", "gogna", "golfo",
+    "gomma", "gonfi", "gonna", "gonzo", "gorgo", "gotta", "gozzo", "gradi",
+    "grafo", "grama", "grana", "grano", "grata", "grato", "grave", "greco",
+    "greto", "greve", "grida", "grigi", "grumo", "guado", "guaio", "guano",
+    "guida", "gusci", "gusto", "hanno", "hotel", "icona", "idolo", "iella",
+    "igneo", "ilare", "imita", "inizi", "invio", "iodio", "iride", "isola",
+    "istmo", "kappa", "karma", "koala", "lacca", "lacci", "ladro", "laghi",
+    "lagna", "laico", "lampo", "lance", "lanci", "lardo", "largo", "larva",
+    "lasci", "lasco", "laser", "latta", "latte", "leale", "lecca", "lecci",
+    "legge", "leggo", "leghe", "legna", "legno", "lembo", "lemma", "lenta",
+    "lenza", "leone", "lepri", "lerci", "lesso", "lesta", "letto", "liana",
+    "libro", "liceo", "lieta", "lieve", "ligio", "limbo", "lince", "linda",
+    "linea", "linfa", "lisca", "lisci", "lista", "litro", "liuto", "lizza",
+    "lobby", "lorde", "losco", "lotta", "lotti", "lucro", "lunga", "luogo",
+    "lusso", "lutto", "madre", "mafia", "maghi", "magia", "magma", "magro",
+    "malga", "mallo", "malta", "mambo", "mamma", "manca", "mance", "mandi",
+    "mangi", "mango", "mania", "manna", "manto", "manzo", "mappa", "marca",
+    "marce", "marea", "marmo", "marna", "marre", "marzo", "massa", "masso",
+    "matto", "mazza", "mazzo", "mecca", "media", "melma", "mensa", "menta",
+    "mento", "merce", "merlo", "messa", "mesta", "meteo", "metro", "metto",
+    "mezzo", "micce", "micio", "miele", "mille", "milza", "miope", "mirto",
+    "misto", "mitra", "modem", "mogio", "mogli", "molla", "molti", "monca",
+    "mondo", "monte", "morbo", "morda", "morsa", "morso", "morti", "mosca",
+    "mosci", "mossa", "mosto", "motto", "mucca", "muffa", "mughi", "multa",
+    "muoio", "muovi", "museo", "mutuo", "nafta", "nanna", "nappa", "narri",
+    "nasce", "nassa", "natia", "nause", "negli", "nembo", "nenia", "nerbo",
+    "nervi", "nesso", "netto", "ninfa", "ninja", "niveo", "nocca", "nomea",
+    "nonna", "norme", "notte", "nozze", "nuche", "nulla", "nuoce", "nuora",
+    "nuoto", "nuovo", "nutre", "nylon", "obesi", "obice", "oblio", "obolo",
+    "occhi", "odore", "offro", "ogiva", "olive", "oltre", "ombra", "omega",
+    "omero", "omino", "omise", "omone", "oncia", "oneri", "onice", "onore",
+    "opaco", "opera", "opino", "oppio", "orale", "orari", "orata", "orchi",
+    "orgia", "ormai", "osare", "ossea", "ossia", "ostia", "ostro", "otite",
+    "ovale", "ovest", "ovile", "ovini", "ovulo", "ovvio", "ozono", "pacca",
+    "pacco", "padre", "paese", "paggi", "paghe", "palco", "palio", "palla",
+    "palle", "palma", "palmo", "palpo", "pampa", "panca", "pance", "panda",
+    "panna", "panne", "panno", "pappa", "parco", "pareo", "paria", "parlo",
+    "parso", "parte", "parti", "parto", "parve", "passa", "passi", "passo",
+    "pasta", "pasto", "patio", "patta", "patto", "paura", "pausa", "pazzi",
+    "pecca", "pecco", "pegni", "pelle", "pelli", "pende", "penna", "penne",
+    "pensa", "perde", "perla", "perno", "perso", "pesca", "pesce", "pesco",
+    "peste", "pesto", "petto", "pezzo", "piace", "piada", "piaga", "piano",
+    "picco", "piede", "piega", "piena", "pieve", "pigio", "pigli", "pigna",
+    "pigro", "pinna", "pinne", "pinta", "pinza", "pioli", "piove", "pista",
+    "piuma", "pizza", "pizzo", "plebe", "plico", "pochi", "podio", "poema",
+    "poeta", "poggi", "polio", "pollo", "polpa", "polpo", "polso", "pompa",
+    "ponfo", "pongo", "ponte", "poppa", "porci", "porge", "porre", "porro",
+    "porta", "porto", "posso", "posta", "posto", "pozza", "pozzi", "prato",
+    "preda", "prego", "premi", "presa", "preso", "prete", "prima", "primo",
+    "privo", "prole", "prosa", "prove", "prude", "puffi", "pugni", "pulce",
+    "pulsa", "punge", "punta", "punti", "purga", "puzzi", "quale", "quasi",
+    "quota", "radio", "raggi", "ragno", "rampa", "randa", "rango", "rasoi",
+    "raspa", "raspo", "ratti", "ratto", "rauca", "razza", "razzo", "reale",
+    "reame", "reato", "rebus", "reggo", "regia", "regio", "regno", "relax",
+    "rende", "renna", "ressa", "resto", "retro", "retta", "retto", "ribes",
+    "ricci", "ricco", "righe", "rione", "risma", "rissa", "ritmi", "ritto",
+    "riuso", "robot", "rocca", "rocce", "roche", "rodeo", "rogge", "roghi",
+    "rogna", "rombo", "ronda", "rosea", "rospo", "rossa", "rotta", "rozza",
+    "rughe", "rullo", "rumba", "ruolo", "ruota", "rupia", "ruppe", "ruspa",
+    "russo", "rutto", "sacco", "sacre", "saggi", "sagra", "saldo", "salma",
+    "salmo", "salpo", "salsa", "salto", "salve", "samba", "sanno", "santa",
+    "sappi", "sarde", "sarti", "sasso", "sauna", "sazio", "scade", "scafo",
+    "scala", "scali", "scavo", "scemi", "scena", "sceso", "scopa", "scopo",
+    "scudo", "scure", "scusa", "secca", "secco", "sedia", "seggi", "seghe",
+    "segno", "selci", "sella", "selva", "senno", "senso", "sento", "senza",
+    "seppi", "serbo", "serie", "serio", "serpe", "serra", "serro", "servi",
+    "sesso", "sesto", "setta", "sette", "setto", "sfera", "sfida", "sfila",
+    "sfizi", "sfogo", "siamo", "sidro", "siedi", "siepe", "siero", "sigla",
+    "sigma", "sisma", "slavi", "soave", "sobri", "socio", "sodio", "sogno",
+    "solai", "solco", "soldi", "somma", "sommo", "sonda", "sonno", "sopra",
+    "sorbo", "sorci", "sordi", "sorge", "sorso", "sorto", "sosia", "sosta",
+    "sotto", "sozza", "spada", "spago", "sparo", "spazi", "speck", "spera",
+    "spesa", "spiga", "spine", "spira", "spore", "sport", "sposi", "spuma",
+    "sputo", "stadi", "stare", "stato", "stelo", "stesa", "stile", "stima",
+    "stiro", "stiva", "studi", "stufo", "succo", "sughi", "sugli", "suino",
+    "suola", "suolo", "suono", "suore", "svago", "tacca", "tacco", "tagli",
+    "talco", "talpa", "tango", "tanto", "tappe", "tappo", "tardi", "targa",
+    "tarlo", "tarme", "tasca", "tassa", "tasso", "tasto", "tatto", "tatuo",
+    "tazza", "teche", "tecno", "tedio", "tempo", "tenda", "tende", "tengo",
+    "tenia", "tenni", "tento", "tenue", "terme", "terna", "terra", "tersa",
+    "terzo", "testa", "teste", "testo", "tetro", "tetto", "tibia", "tieni",
+    "tigli", "tigna", "tigre", "tilde", "tinta", "tizio", "tocca", "toghe",
+    "togli", "tolda", "tolta", "tomba", "tonda", "tonfo", "tonno", "tonti",
+    "toppa", "torba", "torce", "tordo", "torme", "torni", "torre", "torso",
+    "torta", "torto", "torve", "tosse", "tosta", "totem", "tozza", "trama",
+    "trave", "tremo", "treno", "trino", "trito", "trono", "trota", "trova",
+    "tuffo", "tulle", "tuono", "turbe", "turco", "turno", "tutte", "udire",
+    "udito", "ugola", "ulivo", "umana", "umida", "umile", "umore", "umori",
+    "unico", "unire", "unito", "univa", "upupa", "urina", "usano", "usare",
+    "usato", "uscio", "usura", "utero", "utile", "utili", "vacca", "vacuo",
+    "vaghe", "valgo", "valle", "vanga", "vanno", "vanto", "varco", "varie",
+    "vasca", "vasto", "vegli", "vello", "vendo", "venga", "venia", "venti",
+    "vento", "verbo", "verde", "verga", "vermi", "versi", "verso", "verza",
+    "vespa", "veste", "vetro", "vetta", "vezzo", "viale", "vibra", "video",
+    "vieni", "vigna", "villa", "vinco", "vinse", "vinti", "viola", "viole",
+    "virus", "vispa", "visse", "vista", "visto", "vitto", "vizio", "vizzo",
+    "volge", "volle", "volpe", "volta", "volto", "vulva", "vuole", "vuoti",
+    "zaino", "zampa", "zanne", "zappa", "zebra", "zecca", "zeppa", "zeppo",
+    "zinco", "zitti", "zolfo", "zolla", "zoppo", "zucca", "zuffa", "zuppa"
+  ];
+const _TENTATIVI_EXTRA = [
+    "abaco", "abata", "abate", "abati", "abato", "abavi", "abavo", "abaya",
+    "abbai", "abbia", "abbui", "abete", "abeti", "abile", "abili", "abita",
+    "abiti", "abito", "abuna", "abusa", "abusi", "abuso", "acari", "acaro",
+    "acati", "acato", "acazi", "accia", "accio", "aceri", "acero", "acese",
+    "acesi", "aceta", "aceti", "aceto", "achea", "achee", "achei", "acheo",
+    "acida", "acide", "acidi", "acido", "acile", "acili", "acini", "acino",
+    "acori", "acoro", "acqua", "acque", "acqui", "acquo", "actea", "actee",
+    "acuii", "acume", "acumi", "acuta", "acute", "acuti", "acuto", "adagi",
+    "adale", "adali", "addai", "addii", "addio", "addua", "addui", "adduo",
+    "adesa", "adese", "adesi", "adeso", "adima", "adimi", "adimo", "adipe",
+    "adipi", "adira", "adire", "adiri", "adiro", "adita", "adite", "aditi",
+    "adito", "adiva", "adivi", "adivo", "adobe", "adona", "adone", "adoni",
+    "adono", "adora", "adori", "adoro", "adoxa", "adoxe", "adula", "aduli",
+    "adulo", "aduna", "aduni", "aduno", "adusa", "aduse", "adusi", "aduso",
+    "aequo", "aerai", "aerea", "aeree", "aerei", "aereo", "afaca", "afata",
+    "afate", "afati", "afato", "afeli", "afeta", "afeti", "afide", "afidi",
+    "afnii", "afnio", "afona", "afone", "afoni", "afono", "afosa", "afose",
+    "afosi", "afoso", "agama", "agame", "agami", "agamo", "agape", "agapi",
+    "agata", "agate", "agave", "agavi", "aggio", "agiai", "agile", "agili",
+    "agino", "agire", "agita", "agite", "agiti", "agito", "agiva", "agivi",
+    "agivo", "aglio", "agone", "agoni", "agora", "aguti", "aiace", "aiaci",
+    "aiata", "aiate", "aiola", "aiole", "aioli", "aiolo", "aione", "aioni",
+    "aitai", "aiuga", "aiuta", "aiuti", "aiuto", "aizza", "aizzi", "aizzo",
+    "alaci", "alala", "alale", "alali", "alalo", "alami", "alane", "alani",
+    "alano", "alare", "alari", "alata", "alate", "alati", "alato", "alava",
+    "alavi", "alavo", "albio", "album", "alcea", "alcee", "alche", "alcol",
+    "aldio", "aleph", "alesa", "alese", "alesi", "aleso", "alghe", "algia",
+    "algie", "aliai", "alias", "alibi", "alice", "alici", "alida", "alide",
+    "alidi", "alido", "alimi", "alimo", "alino", "alita", "alite", "aliti",
+    "alito", "allea", "allee", "allei", "alleo", "almea", "almee", "alobi",
+    "alona", "alone", "aloni", "alono", "alosa", "alose", "alpha", "altea",
+    "altee", "altra", "altre", "altri", "altro", "alula", "alule", "alvei",
+    "alveo", "alzai", "amaca", "amaci", "amala", "amale", "amali", "amalo",
+    "amami", "amane", "amano", "amara", "amare", "amari", "amaro", "amasi",
+    "amata", "amate", "amati", "amato", "amava", "amavi", "amavo", "ambia",
+    "ambii", "ambio", "ambra", "ambre", "ameba", "amebe", "amena", "amene",
+    "ameni", "ameno", "amica", "amici", "amico", "amida", "amide", "amidi",
+    "amido", "amiga", "amigo", "amile", "amili", "amina", "amine", "amino",
+    "ammai", "amnii", "amnio", "amomi", "amomo", "amore", "amori", "ampia",
+    "ampie", "ampio", "ampli", "amuli", "amulo", "anale", "anali", "anari",
+    "anche", "ancia", "andai", "anela", "anele", "aneli", "anelo", "aneti",
+    "aneto", "angla", "angle", "angli", "anglo", "angue", "angui", "anice",
+    "anici", "anile", "anili", "anima", "anime", "animi", "animo", "annoi",
+    "annua", "annue", "annui", "annuo", "anobi", "anodi", "anodo", "anona",
+    "anone", "ansai", "ansia", "ansie", "ansio", "antri", "antro", "anura",
+    "anure", "anuri", "anuro", "aonia", "aonie", "aonio", "aorta", "aorte",
+    "apale", "apali", "apate", "apice", "apici", "apide", "apidi", "apina",
+    "apine", "apira", "apire", "apiri", "apiro", "apnea", "apnee", "apoda",
+    "apode", "apodi", "apodo", "appai", "appia", "appie", "appio", "aprii",
+    "apula", "apule", "apuli", "apulo", "araba", "arabe", "arabi", "arabo",
+    "araci", "arala", "arale", "arali", "aralo", "arama", "arame", "arami",
+    "aramo", "arane", "arano", "arara", "arare", "arata", "arate", "arati",
+    "arato", "arava", "aravi", "aravo", "arcai", "arche", "archi", "arcua",
+    "arcui", "arcuo", "ardea", "ardee", "ardii", "ardua", "ardue", "ardui",
+    "arduo", "areai", "areca", "arena", "arene", "areni", "areno", "arese",
+    "aresi", "argea", "argee", "argei", "argeo", "arghi", "argon", "arida",
+    "aride", "aridi", "arido", "arile", "arili", "arino", "armai", "arnia",
+    "arnie", "aroma", "aromi", "arpia", "arpie", "arsii", "artai", "artoa",
+    "artoe", "artoi", "artoo", "asada", "asado", "asana", "asari", "asaro",
+    "aschi", "ascia", "ascio", "asili", "asilo", "asina", "asine", "asini",
+    "asino", "asola", "asole", "asoli", "asolo", "aspra", "aspre", "aspri",
+    "aspro", "assai", "astia", "astio", "astri", "astro", "atava", "atave",
+    "atavi", "atavo", "atele", "ateli", "atomi", "atomo", "atona", "atone",
+    "atoni", "atono", "atout", "atrii", "atrio", "attai", "attea", "attee",
+    "attei", "atteo", "attua", "attui", "attuo", "audio", "audit", "auffa",
+    "augna", "augni", "augno", "aulii", "aurai", "aurea", "auree", "aurei",
+    "aureo", "avana", "avara", "avare", "avari", "avaro", "avena", "avene",
+    "avere", "averi", "avete", "aveva", "avevi", "avevo", "avida", "avide",
+    "avidi", "avido", "avita", "avite", "aviti", "avito", "avoca", "avoco",
+    "avola", "avole", "avoli", "avolo", "avori", "avrai", "avrei", "avuta",
+    "avute", "avuti", "avuto", "avvia", "avvii", "avvio", "axone", "axoni",
+    "azera", "azere", "azeri", "azero", "azide", "azidi", "azima", "azime",
+    "azimi", "azimo", "azina", "azine", "azoni", "azota", "azoti", "azoto",
+    "azuki", "babao", "babau", "babbi", "babbo", "bacai", "bacca", "bacco",
+    "bachi", "bacia", "bacie", "bacii", "bacio", "badai", "badge", "badgi",
+    "badia", "badie", "baele", "baeli", "baffi", "baffo", "bagel", "bagli",
+    "bagna", "bagne", "bagni", "bagno", "baiai", "baili", "bailo", "baino",
+    "baita", "baite", "bakka", "bakke", "bakki", "bakko", "balba", "balbe",
+    "balbi", "balbo", "balco", "balda", "balde", "baldi", "baldo", "balia",
+    "balie", "balii", "balio", "balla", "balle", "balli", "ballo", "balma",
+    "balme", "balsa", "balse", "balta", "balte", "balti", "balto", "balza",
+    "balze", "balzi", "balzo", "bamba", "bambe", "bambi", "bambo", "bambu",
+    "banaa", "banae", "banai", "banao", "banca", "banco", "banda", "bande",
+    "bandi", "bando", "bangi", "banjo", "banna", "banni", "banno", "bantu",
+    "barai", "barba", "barbe", "barbi", "barbo", "barca", "barco", "barda",
+    "barde", "bardi", "bardo", "baria", "barie", "barii", "bario", "barra",
+    "barre", "barri", "barro", "basai", "basca", "basco", "basii", "bassa",
+    "basse", "bassi", "basso", "basta", "baste", "basti", "basto", "batta",
+    "batte", "batti", "batto", "batua", "baula", "baule", "bauli", "baulo",
+    "bauta", "baute", "bazar", "bazza", "bazze", "beaci", "beala", "beale",
+    "beali", "bealo", "beami", "beane", "beano", "beare", "beata", "beate",
+    "beati", "beato", "beava", "beavi", "beavo", "bebop", "becca", "becco",
+    "beffa", "beffe", "beffi", "beffo", "begai", "beggi", "beghe", "beghi",
+    "begia", "begli", "beige", "beigi", "beino", "beisa", "beise", "belai",
+    "belga", "belgi", "belii", "belio", "bella", "belle", "belli", "bello",
+    "belta", "belva", "belve", "benai", "benda", "bende", "bendi", "bendo",
+    "benna", "benne", "beola", "beole", "beona", "beone", "beoni", "beota",
+    "beote", "beoti", "berci", "berla", "berle", "berli", "berlo", "berma",
+    "berme", "bermi", "berne", "bersi", "berta", "berte", "berti", "bervi",
+    "besce", "besci", "bessa", "besse", "bessi", "besso", "betta", "bette",
+    "beuta", "beute", "bevei", "bevve", "bevvi", "bezzi", "bezzo", "biada",
+    "biade", "biadi", "biado", "biava", "biave", "biavi", "biavo", "bibbi",
+    "biche", "bidet", "bieca", "bieco", "bieta", "biete", "biffa", "biffe",
+    "biffi", "biffo", "bighe", "bighi", "bigia", "bigie", "bigio", "bigne",
+    "bilia", "bilie", "bimba", "bimbe", "bimbi", "bimbo", "binai", "binda",
+    "binde", "bindi", "binga", "binge", "bingo", "biodi", "biodo", "bioma",
+    "biomi", "biosi", "biova", "biove", "birba", "birbe", "birbi", "birbo",
+    "birce", "birci", "birra", "birre", "birri", "birro", "bisca", "bisce",
+    "bissa", "bissi", "bisso", "bista", "biste", "bisti", "bitta", "bitte",
+    "bitti", "bitto", "biuta", "biute", "biuti", "biuto", "bivio", "bizza",
+    "bizze", "blesa", "blese", "blesi", "bleso", "blini", "blitz", "blumi",
+    "blumo", "blusa", "bluse", "boari", "boaro", "boati", "boato", "bobba",
+    "bobbi", "bobbo", "bocca", "bocce", "bocci", "bocco", "bocia", "boema",
+    "boeme", "boemi", "boemo", "boera", "boere", "boeri", "boero", "boghe",
+    "boide", "boidi", "boite", "boldi", "boldo", "bolge", "bolla", "bolle",
+    "bolli", "bollo", "bolsa", "bolse", "bolsi", "bolso", "bomba", "bombe",
+    "bombi", "bombo", "bongo", "bonne", "bonta", "bonza", "bonze", "bonzi",
+    "bonzo", "borda", "borde", "bordi", "bordo", "borea", "borei", "borgo",
+    "boria", "borie", "borii", "borio", "borni", "borra", "borre", "borri",
+    "borro", "borsa", "borse", "bosco", "bossi", "bosso", "botri", "botro",
+    "botta", "botte", "botti", "botto", "boule", "boxai", "bozza", "bozze",
+    "bozzi", "bozzo", "braca", "brace", "braci", "braco", "brada", "brade",
+    "bradi", "brado", "braga", "brago", "braii", "brama", "brame", "brami",
+    "bramo", "brani", "brano", "brasa", "brasi", "braso", "brava", "brave",
+    "bravi", "bravo", "bremi", "bremo", "breva", "breve", "brevi", "brice",
+    "brici", "brida", "bride", "briga", "brige", "brigi", "brigo", "brina",
+    "brine", "brini", "brino", "broda", "brode", "brodi", "brodo", "broge",
+    "brogi", "broli", "brolo", "bromi", "bromo", "brova", "brovi", "brovo",
+    "bruca", "bruci", "bruco", "brugi", "brugo", "bruii", "bruma", "brume",
+    "bruna", "brune", "bruni", "bruno", "bruta", "brute", "bruti", "bruto",
+    "bruzi", "bubai", "bucai", "bucce", "bucci", "buche", "buchi", "bucio",
+    "budda", "buddi", "bufai", "buffa", "buffe", "buffi", "buffo", "bugia",
+    "bugie", "bugio", "bugli", "bugna", "bugne", "bugni", "bugno", "buina",
+    "buine", "bulai", "bulbi", "bulbo", "bulla", "bulle", "bulli", "bullo",
+    "bumba", "bumbe", "buona", "buone", "buoni", "buono", "burba", "burbe",
+    "burga", "burka", "burla", "burle", "burli", "burlo", "burqa", "burri",
+    "burro", "busaa", "busae", "busai", "busao", "busca", "busco", "bussa",
+    "busse", "bussi", "busso", "busta", "buste", "busti", "busto", "butta",
+    "butte", "butti", "butto", "buzza", "buzze", "buzzi", "buzzo", "bwaka",
+    "bwana", "caaba", "cabla", "cabli", "cablo", "cabra", "cabri", "cabro",
+    "cacai", "cacao", "cacca", "cacce", "cacci", "cache", "cachi", "cacia",
+    "cacio", "cacti", "cacto", "cadde", "caddi", "cadmi", "caffa", "caffe",
+    "caffi", "caffo", "cafra", "cafre", "cafri", "cafro", "cagai", "caghi",
+    "cagli", "cagna", "cagne", "caiba", "caibe", "caina", "caine", "caini",
+    "caino", "calai", "calao", "calca", "calce", "calci", "calco", "calda",
+    "calde", "caldi", "caldo", "calia", "calie", "calla", "calle", "calli",
+    "callo", "calma", "calme", "calmi", "calmo", "calse", "calta", "calte",
+    "calva", "calve", "calvi", "calvo", "calza", "calze", "calzi", "calzo",
+    "cambi", "camei", "cameo", "camma", "camme", "campa", "campi", "campo",
+    "canai", "canea", "canee", "canga", "cange", "cangi", "canna", "canne",
+    "canni", "canno", "canoa", "canoe", "cansa", "cansi", "canso", "canta",
+    "canti", "canto", "capai", "capii", "cappa", "cappe", "cappi", "cappo",
+    "capra", "capre", "capri", "capro", "capta", "capti", "capto", "carca",
+    "carco", "carda", "carde", "cardi", "cardo", "cargo", "caria", "carie",
+    "cario", "carme", "carmi", "carna", "carne", "carni", "carno", "carpa",
+    "carpe", "carpi", "carpo", "carri", "carro", "carsi", "carso", "carta",
+    "carte", "carvi", "casba", "casbe", "casca", "casci", "casco", "casei",
+    "caseo", "caspa", "caspe", "caspi", "cassa", "casse", "cassi", "casso",
+    "casta", "caste", "casti", "casto", "catta", "catte", "catti", "catto",
+    "caule", "cauli", "cauri", "causa", "cause", "causi", "causo", "cauta",
+    "caute", "cauti", "cauto", "cavai", "cavea", "cavee", "cavia", "cavie",
+    "cazza", "cazze", "cazzi", "cazzo", "cecai", "cecca", "ceche", "cechi",
+    "cecio", "cedei", "cedra", "cedri", "cedro", "cedua", "cedue", "cedui",
+    "ceduo", "ceffa", "ceffi", "ceffo", "ceiba", "ceibe", "celai", "celia",
+    "celie", "celio", "cella", "celle", "celli", "cello", "celta", "celte",
+    "celti", "celto", "celzi", "cenai", "cenci", "cenge", "cengi", "cenna",
+    "cenni", "cenno", "censi", "censo", "cento", "ceppa", "ceppe", "ceppi",
+    "ceppo", "cerai", "cerca", "cerci", "cerco", "cerea", "ceree", "cerei",
+    "cereo", "cerii", "cerio", "cerna", "cerne", "cerni", "cerno", "cerri",
+    "cerro", "certa", "certe", "certi", "certo", "cerva", "cerve", "cervi",
+    "cervo", "cesia", "cesie", "cesio", "cespi", "cespo", "cessa", "cesse",
+    "cessi", "cesso", "cesta", "ceste", "cesti", "cesto", "cetra", "cetre",
+    "chela", "chele", "cheli", "cheta", "chete", "cheti", "cheto", "chile",
+    "chili", "chilo", "chimi", "chimo", "china", "chine", "chini", "chino",
+    "chita", "chiti", "chito", "cholo", "chope", "ciaba", "ciabi", "ciabo",
+    "ciana", "ciane", "ciani", "ciano", "ciati", "ciato", "ciazi", "cibai",
+    "cicca", "cicce", "cicci", "cicco", "ciche", "cicli", "ciclo", "cidia",
+    "cidie", "cidio", "cieca", "cieco", "cieli", "cielo", "ciesa", "ciese",
+    "cifra", "cifre", "cifri", "cifro", "cigli", "cigna", "cigne", "cigni",
+    "cigno", "cimai", "cimba", "cimbe", "cince", "cinga", "cinge", "cingi",
+    "cingo", "cinse", "cinsi", "cinta", "cinte", "cinti", "cinto", "cinzi",
+    "cioce", "ciofi", "ciofo", "cippi", "cippo", "cipri", "circa", "circe",
+    "circi", "circo", "cirri", "cirro", "cisio", "cispa", "cispe", "cista",
+    "ciste", "cisti", "cisto", "citai", "citta", "citte", "citti", "citto",
+    "ciuca", "ciuco", "ciula", "ciuli", "ciulo", "clade", "cladi", "clama",
+    "clami", "clamo", "clava", "clave", "clavi", "clavo", "cleri", "clero",
+    "clima", "climi", "cline", "clini", "clino", "clivi", "clivo", "clona",
+    "clone", "cloni", "clono", "clora", "clori", "cloro", "clown", "cloze",
+    "clune", "cluni", "cnidi", "coala", "coana", "coane", "coati", "cobea",
+    "cobee", "cobla", "coble", "cobra", "cocca", "cocce", "cocci", "cocco",
+    "coche", "codia", "codio", "coesa", "coese", "coesi", "coeso", "coeva",
+    "coeve", "coevi", "coevo", "coffa", "coffe", "cofta", "cofte", "cofti",
+    "cofto", "cogli", "cogni", "cogno", "coiai", "coipi", "coipo", "coire",
+    "coita", "coite", "coiti", "coito", "coiva", "coivi", "coivo", "colai",
+    "colca", "colco", "colei", "colga", "colgo", "colia", "colie", "colla",
+    "colle", "colli", "collo", "colma", "colme", "colmi", "colmo", "colon",
+    "colpa", "colpe", "colpi", "colpo", "colse", "colsi", "colta", "colte",
+    "colti", "colto", "colui", "colza", "colze", "comba", "combe", "combo",
+    "comma", "commi", "commo", "compi", "conca", "conce", "conci", "conga",
+    "congi", "conia", "conie", "conio", "conne", "conni", "conno", "consa",
+    "conso", "conta", "conte", "conti", "conto", "cooba", "coobi", "coobo",
+    "copia", "copie", "copio", "coppa", "coppe", "coppi", "coppo", "copra",
+    "copre", "copri", "copro", "copta", "copte", "copti", "copto", "coque",
+    "corai", "corba", "corbe", "corca", "corco", "corda", "corde", "corea",
+    "coree", "corei", "coreo", "corio", "cormi", "cormo", "corna", "corni",
+    "corno", "corpi", "corpo", "corra", "corre", "corri", "corro", "corsa",
+    "corse", "corsi", "corso", "corta", "corte", "corti", "corto", "corvi",
+    "corvo", "cosai", "cosca", "cosce", "cosci", "cosfi", "cosmi", "cosmo",
+    "cosse", "cossi", "cosso", "costa", "coste", "costi", "costo", "cotta",
+    "cotte", "cotti", "cotto", "cousi", "couso", "covai", "covid", "cozza",
+    "cozze", "cozzi", "cozzo", "crace", "craci", "crani", "crapa", "crape",
+    "crasi", "creai", "creda", "crede", "credi", "credo", "crema", "creme",
+    "cremi", "cremo", "crena", "crene", "creni", "creno", "crepa", "crepe",
+    "crepi", "crepo", "cresi", "creso", "creta", "crete", "crime", "crimi",
+    "crina", "crine", "crini", "crino", "crisi", "croce", "croci", "croco",
+    "croda", "crode", "croia", "croie", "croio", "croma", "crome", "cromi",
+    "cromo", "crono", "cruci", "cruda", "crude", "crudi", "crudo", "cruna",
+    "crune", "ctoni", "cubai", "cubia", "cubie", "cucca", "cucce", "cucci",
+    "cucco", "cucia", "cucii", "cucio", "cueva", "cugna", "cugne", "culai",
+    "culla", "culle", "culli", "cullo", "culmi", "culmo", "culpa", "culta",
+    "culte", "culti", "culto", "cunca", "cunce", "cunci", "cunco", "cunei",
+    "cuneo", "cuoca", "cuoce", "cuoci", "cuoco", "cuoia", "cuoio", "cuora",
+    "cuore", "cuori", "curai", "curda", "curde", "curdi", "curdo", "curia",
+    "curie", "curii", "curio", "curri", "curro", "curry", "curva", "curve",
+    "curvi", "curvo", "cusco", "cussi", "cusso", "dacci", "dache", "dacia",
+    "dacie", "dafne", "dafni", "daghe", "dagli", "daina", "daine", "daini",
+    "daino", "dalai", "dalia", "dalie", "dalla", "dalle", "dalli", "dallo",
+    "damai", "damma", "damme", "dammi", "dance", "danda", "dande", "dando",
+    "danna", "danne", "danni", "danno", "dante", "danti", "danza", "danze",
+    "danzi", "danzo", "darai", "darci", "dardi", "dardo", "darei", "darla",
+    "darle", "darli", "darlo", "darmi", "darne", "darsi", "darti", "darvi",
+    "daspo", "datai", "datti", "dauni", "dazia", "dazio", "debba", "debbi",
+    "debbo", "deche", "deghi", "degli", "degna", "degne", "degni", "degno",
+    "delia", "delie", "delio", "della", "delle", "dello", "delta", "demmo",
+    "densa", "dense", "densi", "denso", "denta", "dente", "denti", "dento",
+    "derby", "derma", "dermi", "derno", "desco", "desia", "desii", "desio",
+    "dessa", "desse", "dessi", "desso", "desta", "deste", "desti", "desto",
+    "detox", "detta", "dette", "detti", "detto", "devia", "devie", "devii",
+    "devio", "diade", "diadi", "diale", "diali", "diamo", "diana", "diane",
+    "diano", "diapa", "diape", "diapi", "diapo", "diari", "diate", "diaza",
+    "diaze", "diazi", "diazo", "dicai", "dicci", "dicco", "diche", "dichi",
+    "dicta", "dieci", "diede", "diedi", "diene", "dieni", "dieri", "diesa",
+    "diesi", "dieso", "dieta", "diete", "dieti", "dieto", "dighe", "digli",
+    "dildi", "dildo", "dilla", "dille", "dilli", "dillo", "dimmi", "dimoi",
+    "dindi", "dindo", "dingo", "dinka", "dinne", "diodi", "diodo", "dioli",
+    "diolo", "diosi", "dipoi", "dirai", "dirci", "direi", "dirla", "dirle",
+    "dirli", "dirlo", "dirmi", "dirne", "dirsi", "dirti", "dirvi", "disco",
+    "disfa", "disfi", "disfo", "disia", "disii", "disio", "disse", "dissi",
+    "dista", "disti", "disto", "ditta", "ditte", "ditti", "diula", "djaga",
+    "doagi", "doari", "dobla", "doble", "dobli", "doblo", "dobra", "docce",
+    "docci", "docmi", "dogai", "doghe", "doghi", "dogli", "dogma", "dogmi",
+    "dogre", "dolai", "dolca", "dolce", "dolci", "dolco", "dolga", "dolgo",
+    "dolio", "dolse", "dolsi", "dolta", "dolte", "dolti", "dolto", "domai",
+    "domma", "dommi", "donai", "donde", "donna", "donne", "donni", "donno",
+    "dopai", "doppi", "dorai", "doria", "dorio", "dorma", "dorme", "dormi",
+    "dormo", "dorsi", "dorso", "dosai", "dossi", "dosso", "dotai", "dotta",
+    "dotte", "dotti", "dotto", "doula", "doule", "dovei", "draba", "drabe",
+    "draco", "draga", "drago", "drena", "dreni", "dreno", "drive", "droga",
+    "drogo", "droma", "drome", "dromi", "dromo", "drone", "droni", "druda",
+    "drude", "drudi", "drudo", "drupa", "drupe", "drusa", "druse", "drusi",
+    "druso", "duagi", "duale", "duali", "dubbi", "ducai", "ducea", "ducee",
+    "duchi", "duina", "duine", "duini", "duino", "dulia", "dulie", "duole",
+    "duoli", "duolo", "duomi", "duomo", "dupla", "duple", "dupli", "duplo",
+    "durai", "durio", "durra", "durre", "duvet", "dviii", "ebani", "ebano",
+    "ebbio", "ebbra", "ebbre", "ebbri", "ebbro", "ebeni", "ebeno", "ebeta",
+    "ebete", "ebeti", "ebeto", "ebola", "ebole", "ebrea", "ebree", "ebrei",
+    "ebreo", "ebuli", "ebulo", "echei", "echeo", "echio", "ecidi", "edace",
+    "edaci", "edema", "edemi", "edera", "edere", "edile", "edili", "edipi",
+    "edipo", "edita", "edite", "editi", "edito", "edona", "edone", "edoni",
+    "edono", "educa", "educe", "educi", "educo", "edule", "eduli", "efebi",
+    "efebo", "efesi", "efori", "eforo", "egena", "egene", "egeni", "egeno",
+    "egida", "egide", "egira", "egire", "egizi", "ekiti", "elafe", "elafi",
+    "eleni", "eleva", "elevi", "elevo", "elica", "elice", "elici", "elida",
+    "elide", "elidi", "elido", "eliea", "eliee", "elima", "elime", "elimi",
+    "elimo", "elisa", "elise", "elisi", "eliso", "elogi", "eluda", "elude",
+    "eludi", "eludo", "eluii", "elusa", "eluse", "elusi", "eluso", "eluvi",
+    "emaci", "email", "emale", "emali", "emana", "emani", "emano", "emeri",
+    "emero", "emesi", "emica", "emici", "emico", "emide", "emidi", "emina",
+    "emine", "emiri", "emiro", "emise", "emisi", "emoji", "emoni", "empia",
+    "empie", "empii", "empio", "emula", "emule", "emuli", "emulo", "enema",
+    "enemi", "enfia", "enfie", "enfio", "engri", "ennea", "ennee", "ennei",
+    "enneo", "enoli", "enolo", "entra", "entri", "entro", "enula", "enule",
+    "eolia", "eolie", "eolio", "epica", "epici", "epico", "epoca", "epodi",
+    "epodo", "epura", "epuri", "epuro", "equai", "erada", "erade", "eradi",
+    "erado", "erano", "erari", "erasa", "erase", "erasi", "eraso", "erbai",
+    "erbio", "erebi", "erebo", "ereda", "erede", "eredi", "eredo", "eremi",
+    "eremo", "ereta", "ereti", "ereto", "erica", "eriga", "erige", "erigi",
+    "erigo", "ernia", "ernie", "ernio", "eroda", "erode", "erodi", "erodo",
+    "eroga", "erogo", "erosa", "erose", "erosi", "eroso", "errai", "eruca",
+    "erula", "erule", "eruli", "erulo", "erzya", "esala", "esali", "esalo",
+    "esame", "esami", "esani", "esano", "esche", "eschi", "esiga", "esige",
+    "esigi", "esigo", "esile", "esili", "esima", "esime", "esimi", "esimo",
+    "esipi", "esipo", "esita", "esiti", "esito", "esizi", "esodi", "esodo",
+    "esone", "esoni", "esora", "esori", "esoro", "esosa", "esose", "esosi",
+    "esoso", "espia", "espii", "espio", "essai", "estia", "estie", "estii",
+    "estio", "estri", "estro", "estua", "estui", "estuo", "esula", "esule",
+    "esuli", "esulo", "esuma", "esumi", "esumo", "etani", "etano", "etate",
+    "etati", "etene", "eteni", "etera", "etere", "eteri", "etero", "etesi",
+    "ethos", "etica", "etici", "etico", "etile", "etili", "etimi", "etimo",
+    "etini", "etino", "etnea", "etnee", "etnei", "etneo", "etnia", "etnie",
+    "etola", "etole", "etoli", "etolo", "eutri", "evada", "evade", "evadi",
+    "evado", "evasa", "evase", "evasi", "evaso", "evira", "eviri", "eviro",
+    "evita", "eviti", "evito", "evoca", "evoco", "extra", "fabri", "fabro",
+    "facce", "facci", "facto", "faggi", "fagli", "faida", "faide", "faina",
+    "faine", "falba", "falbe", "falbi", "falbo", "falca", "falce", "falci",
+    "falco", "falda", "falde", "faldi", "faldo", "falla", "falle", "falli",
+    "fallo", "falsa", "false", "falsi", "falso", "famai", "fammi", "fanga",
+    "fango", "fanne", "fanno", "fante", "fanti", "farad", "farai", "farce",
+    "farci", "farda", "farde", "farea", "farei", "farla", "farle", "farli",
+    "farlo", "farmi", "farne", "farri", "farro", "farsa", "farse", "farsi",
+    "farso", "farti", "farvi", "fasai", "fasce", "fasci", "fasta", "faste",
+    "fasti", "fasto", "fatai", "fatta", "fatte", "fatti", "fatto", "fatua",
+    "fatue", "fatui", "fatuo", "fatwa", "fauce", "fauci", "fauna", "faune",
+    "fauni", "fauno", "fauve", "favai", "faxai", "feace", "feaci", "febea",
+    "febee", "febei", "febeo", "fecce", "fedai", "felce", "felci", "fella",
+    "felle", "felli", "fello", "felpa", "felpe", "felpi", "felpo", "felse",
+    "felsi", "felze", "felzi", "femme", "fence", "fenda", "fende", "fendi",
+    "fendo", "feria", "ferie", "ferii", "ferla", "ferle", "ferma", "ferme",
+    "fermi", "fermo", "ferra", "ferri", "ferro", "fersa", "ferse", "ferva",
+    "ferve", "fervi", "fervo", "ferza", "ferze", "ferzi", "ferzo", "fessa",
+    "fesse", "fessi", "fesso", "festa", "feste", "festi", "festo", "fetta",
+    "fette", "feudi", "feudo", "fiaba", "fiabe", "fiala", "fiale", "fiani",
+    "fiano", "fiata", "fiate", "fiati", "fiato", "fibra", "fibre", "ficca",
+    "ficco", "ficea", "ficee", "fiche", "fichi", "fidai", "fiele", "fieli",
+    "fieni", "fieno", "fiera", "fiere", "fieri", "fiero", "fighe", "fighi",
+    "figli", "filai", "filli", "fillo", "filma", "filmi", "filmo", "filza",
+    "filze", "finca", "finga", "finge", "fingi", "fingo", "finii", "finna",
+    "finne", "finni", "finno", "finse", "finsi", "finta", "finte", "finti",
+    "finto", "fioca", "fioco", "fiora", "fiore", "fiori", "fioro", "fiote",
+    "fioti", "firma", "firme", "firmi", "firmo", "fisai", "fisco", "fissa",
+    "fisse", "fissi", "fisso", "fitta", "fitte", "fitti", "fitto", "fiume",
+    "fiumi", "fiuta", "fiuti", "fiuto", "flake", "flana", "flani", "flano",
+    "flash", "flati", "flato", "flava", "flave", "flavi", "flavo", "flebo",
+    "fleti", "fleto", "flirt", "flora", "flore", "fluii", "fobia", "fobie",
+    "focea", "focee", "focei", "foceo", "foche", "fochi", "focus", "fodri",
+    "fodro", "fogge", "foggi", "foghe", "fogli", "fogna", "fogne", "fogni",
+    "fogno", "foiba", "foibe", "folce", "folco", "folio", "folla", "folle",
+    "folli", "follo", "folta", "folte", "folti", "folto", "fonai", "fonda",
+    "fonde", "fondi", "fondo", "fonia", "fonie", "fonte", "fonti", "forai",
+    "forca", "force", "forci", "forge", "forgi", "forma", "forme", "formi",
+    "formo", "forni", "forno", "forra", "forre", "forse", "forte", "forti",
+    "forum", "forza", "forze", "forzi", "forzo", "fosca", "fosco", "fossa",
+    "fosse", "fossi", "fosso", "foste", "fosti", "fotta", "fotte", "fotti",
+    "fotto", "fovea", "fovee", "foyer", "fraga", "frale", "frali", "frame",
+    "frana", "frane", "frani", "frano", "frase", "frasi", "frate", "frati",
+    "frega", "fregi", "frego", "frema", "freme", "fremi", "fremo", "frena",
+    "freni", "freno", "freon", "fresa", "frese", "fresi", "freso", "frigi",
+    "frigo", "frine", "frini", "frisa", "frisi", "friso", "froda", "frode",
+    "frodi", "frodo", "froge", "fruga", "frugo", "fruii", "ftori", "ftoro",
+    "fuchi", "fuffa", "fuffe", "fugai", "fugga", "fugge", "fuggi", "fuggo",
+    "fughe", "fughi", "fulbe", "fulbi", "fulga", "fulge", "fulgi", "fulgo",
+    "fulsa", "fulse", "fulsi", "fulso", "fulva", "fulve", "fulvi", "fulvo",
+    "fumai", "fumea", "fumee", "fumei", "fumeo", "fumma", "fummi", "fummo",
+    "funai", "fundo", "funga", "funge", "fungi", "fungo", "funky", "funse",
+    "funsi", "funta", "funte", "funti", "funto", "fuoco", "fuori", "furai",
+    "furba", "furbe", "furbi", "furbo", "furca", "furia", "furie", "furio",
+    "furti", "furto", "fusai", "fusta", "fuste", "fusti", "fusto", "futon",
+    "fuxia", "fuxie", "fuzzy", "gabba", "gabbi", "gabbo", "gaela", "gaele",
+    "gaeli", "gaelo", "gaffa", "gaffe", "gagge", "gaggi", "galea", "galee",
+    "galei", "galeo", "galgo", "galio", "galla", "galle", "galli", "gallo",
+    "gamba", "gambe", "gambi", "gambo", "gamia", "gamie", "gamma", "gamme",
+    "ganci", "ganda", "gande", "ganga", "gange", "ganza", "ganze", "ganzi",
+    "ganzo", "garba", "garbe", "garbi", "garbo", "garga", "gargo", "garni",
+    "garza", "garze", "garzi", "garzo", "gasai", "gasco", "gassa", "gasse",
+    "gassi", "gasso", "gatta", "gatte", "gatti", "gatto", "gauda", "gaude",
+    "gaudi", "gaudo", "gauge", "gauli", "gaulo", "gauta", "gaute", "gauti",
+    "gauto", "gazai", "gazza", "gazze", "gazzi", "gazzo", "gechi", "gelai",
+    "gelao", "gelsa", "gelse", "gelsi", "gelso", "gemei", "gemma", "gemme",
+    "gemmi", "gemmo", "genai", "genia", "genie", "genio", "genoa", "gente",
+    "genti", "genue", "geode", "geodi", "geomi", "gerba", "gerbe", "gergo",
+    "gerla", "gerle", "gerli", "gerlo", "germa", "germe", "germi", "gessa",
+    "gessi", "gesso", "gesta", "gesti", "gesto", "getta", "getti", "getto",
+    "ghali", "ghega", "ghegi", "ghego", "ghiri", "ghiro", "ghisa", "ghise",
+    "giace", "giaci", "giaco", "giada", "giade", "giani", "giano", "giara",
+    "giare", "giava", "giave", "gibbi", "gibbo", "gighe", "gigli", "gilda",
+    "gilde", "gilet", "gimmo", "ginna", "ginni", "ginno", "gioca", "gioco",
+    "giogo", "gioia", "gioie", "gioii", "gioio", "giova", "giovi", "giovo",
+    "girai", "girci", "girei", "girii", "girio", "girla", "girle", "girli",
+    "girlo", "girmi", "girne", "girsi", "girti", "girvi", "gisse", "gissi",
+    "giste", "gisti", "gitta", "gitti", "gitto", "giuba", "giube", "giuda",
+    "giuli", "giura", "giure", "giuri", "giuro", "giuso", "gladi", "gleba",
+    "glebe", "glena", "glene", "gleni", "glifi", "glifo", "globe", "globi",
+    "globo", "glomi", "glomo", "glori", "gluma", "glume", "gnidi", "gnome",
+    "gnomi", "gnomo", "gnosi", "gnuda", "gnude", "gnudi", "gnudo", "gobba",
+    "gobbe", "gobbi", "gobbo", "gocce", "gocci", "godei", "godii", "godio",
+    "goffa", "goffe", "goffi", "goffo", "gogna", "gogne", "goldi", "golea",
+    "golei", "goleo", "golfi", "golfo", "golia", "golpe", "gombe", "gombi",
+    "gombo", "gomma", "gomme", "gommi", "gommo", "gonda", "gonde", "gondi",
+    "gondo", "gonfa", "gonfe", "gonfi", "gonfo", "gonga", "gonio", "gonja",
+    "gonna", "gonne", "gonza", "gonze", "gonzi", "gonzo", "gordi", "gorga",
+    "gorge", "gorgo", "gorna", "gorne", "gotha", "gotta", "gotte", "gotti",
+    "gotto", "gouda", "gozzi", "gozzo", "grada", "grade", "gradi", "grado",
+    "grafi", "grafo", "graia", "graie", "graii", "graio", "grama", "grame",
+    "grami", "gramo", "grana", "grane", "grani", "grano", "grata", "grate",
+    "grati", "grato", "grava", "grave", "gravi", "gravo", "grazi", "greca",
+    "greci", "greco", "gremi", "greti", "greto", "greve", "grevi", "grica",
+    "grici", "grico", "grida", "gride", "gridi", "grido", "grifa", "grifi",
+    "grifo", "grigi", "grola", "grole", "groma", "grome", "grufa", "grufi",
+    "grufo", "gruga", "grugo", "gruma", "grume", "grumi", "grumo", "grusi",
+    "guaco", "guada", "guade", "guadi", "guado", "guaii", "guaio", "guani",
+    "guano", "guari", "guata", "guati", "guato", "gufai", "guida", "guide",
+    "guidi", "guido", "guina", "guini", "guino", "guisa", "guise", "gulag",
+    "gurge", "gurgi", "gusci", "gusla", "gusta", "gusti", "gusto", "gutea",
+    "gutee", "gutei", "guteo", "gutti", "gutto", "guzla", "guzle", "gwari",
+    "hafni", "haida", "haiku", "hakka", "hallo", "hamza", "hanno", "harem",
+    "haute", "hedge", "hello", "henna", "henne", "hertz", "hevea", "hevee",
+    "hijab", "hindi", "hobby", "hokka", "hokke", "hokki", "hokko", "holmi",
+    "hotel", "house", "huave", "huavi", "huchi", "hudna", "iacea", "iacee",
+    "iarda", "iarde", "ibera", "ibere", "iberi", "ibero", "iblea", "iblee",
+    "iblei", "ibleo", "icari", "icena", "icene", "iceni", "iceno", "icona",
+    "icone", "icore", "icori", "ictus", "idali", "iddia", "iddie", "iddio",
+    "ideai", "idoli", "idolo", "idria", "idrie", "iella", "ielle", "iesta",
+    "ieste", "iesti", "iesto", "ietta", "ietti", "ietto", "ifale", "ifali",
+    "ifema", "ifemi", "igloo", "ignea", "ignee", "ignei", "igneo", "ilare",
+    "ilari", "ilice", "ilici", "ilide", "ilidi", "illea", "illee", "illei",
+    "illeo", "ilota", "ilote", "iloti", "image", "imago", "imani", "imano",
+    "imati", "imene", "imeni", "imita", "imiti", "imito", "inala", "inali",
+    "inalo", "inane", "inani", "incoa", "incoi", "incoo", "india", "indie",
+    "indio", "infoi", "infra", "ingoi", "ingri", "inizi", "inlei", "inlui",
+    "inmia", "inmio", "inoli", "inoma", "inomi", "inope", "inopi", "insce",
+    "insci", "insta", "insti", "insto", "intra", "intro", "inula", "inule",
+    "inuma", "inumi", "inumo", "invai", "invia", "invii", "invio", "iodai",
+    "iodio", "ioide", "ioidi", "iolla", "iolle", "ionia", "ionie", "ionio",
+    "ipate", "ipati", "ippia", "ippie", "ippii", "ippio", "irace", "iraci",
+    "irata", "irate", "irati", "irato", "irchi", "irida", "iride", "iridi",
+    "irido", "irite", "iriti", "iroki", "iroko", "irosa", "irose", "irosi",
+    "iroso", "irula", "ischi", "islam", "isodi", "isola", "isole", "isoli",
+    "isolo", "isopi", "isopo", "issai", "istai", "istle", "istmi", "istmo",
+    "isuri", "isuro", "itaci", "itaco", "itala", "itale", "itali", "italo",
+    "itera", "iteri", "itero", "iucca", "iulca", "iulco", "iurta", "iurte",
+    "ivata", "ivate", "ivati", "ivato", "jihad", "jolly", "joule", "jumbo",
+    "junci", "junco", "kaaba", "kakwa", "kamti", "kanji", "kansa", "kaone",
+    "kaoni", "kappa", "karma", "kasba", "kayak", "kebab", "kendo", "khasi",
+    "kiowa", "kissi", "kitai", "kiwai", "koala", "konde", "kondi", "konga",
+    "konge", "kongi", "kongo", "konta", "kulla", "kulle", "kulli", "kullo",
+    "kunta", "kurda", "kurde", "kurdi", "kurdo", "kwena", "kyrie", "labbi",
+    "labbo", "labda", "labio", "labri", "labro", "lacca", "lacce", "lacci",
+    "lacco", "ladra", "ladre", "ladri", "ladro", "laghi", "lagna", "lagne",
+    "lagni", "lagno", "laica", "laici", "laico", "laida", "laide", "laidi",
+    "laido", "lamai", "lamba", "lambe", "lambi", "lambo", "lamia", "lamie",
+    "lamio", "lampa", "lampe", "lampi", "lampo", "lanca", "lance", "lanci",
+    "landa", "lande", "lanea", "lanee", "lanei", "laneo", "lanfa", "lanfe",
+    "langa", "lange", "lania", "lanio", "lanzi", "lanzo", "lapis", "lappa",
+    "lappe", "lappi", "lappo", "larda", "lardi", "lardo", "larga", "large",
+    "largo", "larva", "larve", "larvi", "larvo", "lasca", "lasci", "lasco",
+    "laser", "lassa", "lasse", "lassi", "lasso", "lasta", "laste", "latra",
+    "latri", "latro", "latta", "latte", "latti", "latto", "lauda", "laude",
+    "laudi", "laura", "laure", "lauri", "lauro", "lauta", "laute", "lauti",
+    "lauto", "lavai", "lavia", "lavie", "lavra", "lavre", "lazza", "lazze",
+    "lazzi", "lazzo", "leale", "leali", "lebbi", "lecca", "lecce", "lecci",
+    "lecco", "legai", "legga", "legge", "leggi", "leggo", "leghe", "leghi",
+    "legna", "legni", "legno", "lella", "lelle", "lelli", "lello", "lembi",
+    "lembo", "lemma", "lemme", "lemmi", "lemmo", "lemna", "lemne", "lenca",
+    "lenci", "lenea", "lenee", "lenei", "leneo", "lenii", "lenta", "lente",
+    "lenti", "lento", "lenza", "lenze", "lenzi", "lenzo", "leone", "leoni",
+    "leppa", "leppi", "leppo", "lepra", "lepre", "lepri", "lerce", "lerci",
+    "lesbi", "lesbo", "lesca", "lessa", "lesse", "lessi", "lesso", "lesta",
+    "leste", "lesti", "lesto", "letea", "letee", "letei", "leteo", "letri",
+    "letro", "letta", "lette", "letti", "letto", "leuca", "leuci", "leuco",
+    "leuti", "leuto", "levai", "lezia", "lezie", "lezio", "lezza", "lezze",
+    "lezzi", "lezzo", "liana", "liane", "libai", "libra", "libre", "libri",
+    "libro", "licci", "licei", "liceo", "licia", "licie", "licio", "lidar",
+    "lidia", "lidie", "lidio", "lieta", "liete", "lieti", "lieto", "lieve",
+    "lievi", "lifta", "lifti", "lifto", "ligei", "ligeo", "ligia", "ligie",
+    "ligio", "ligre", "ligri", "lilla", "limai", "limbi", "limbo", "limii",
+    "limio", "limma", "limmi", "linai", "lince", "linci", "linda", "linde",
+    "lindi", "lindo", "linea", "linee", "linei", "lineo", "linfa", "linfe",
+    "lingi", "linka", "linki", "linko", "lippa", "lippe", "lippi", "lippo",
+    "liqua", "liqui", "liquo", "lisai", "lisca", "lisce", "lisci", "lissa",
+    "lisse", "lissi", "lisso", "lista", "liste", "listi", "listo", "litai",
+    "litio", "litra", "litre", "litri", "litro", "litta", "litte", "litui",
+    "lituo", "liuti", "liuto", "lizza", "lizze", "lizzi", "lizzo", "lobby",
+    "locai", "locca", "locco", "lochi", "lodai", "loden", "lodge", "loffa",
+    "loffe", "loffi", "loffo", "lofio", "logga", "logge", "loggo", "loghi",
+    "logia", "logli", "logra", "logri", "logro", "loica", "loici", "loico",
+    "lolla", "lolle", "lombi", "lombo", "lompi", "lompo", "longa", "longo",
+    "lonza", "lonze", "loppa", "loppe", "loppi", "loppo", "lorda", "lorde",
+    "lordi", "lordo", "lorio", "losca", "losco", "lotta", "lotte", "lotti",
+    "lotto", "lucci", "lucco", "lucea", "lucei", "luchi", "lucia", "lucie",
+    "lucra", "lucri", "lucro", "ludra", "ludre", "ludri", "ludro", "luena",
+    "luese", "luesi", "luffa", "luffe", "lugli", "lugre", "lugri", "lugro",
+    "luigi", "lulla", "lulle", "lumai", "lumia", "lumie", "lumpi", "lumpo",
+    "lunda", "lunga", "lungi", "lungo", "luogo", "lurca", "lurco", "lusca",
+    "lusco", "lussa", "lussi", "lusso", "lutai", "lutea", "lutee", "lutei",
+    "luteo", "lutta", "lutti", "lutto", "luvia", "luvie", "luvii", "luvio",
+    "macao", "macca", "macco", "machi", "macho", "macia", "macie", "macro",
+    "madia", "madie", "madre", "madri", "mafia", "mafie", "mafio", "magai",
+    "maggi", "maghe", "maghi", "magia", "magie", "magio", "magli", "magma",
+    "magmi", "magna", "magne", "magni", "magno", "magra", "magre", "magri",
+    "magro", "maide", "maidi", "maina", "maini", "maino", "malga", "malgo",
+    "malia", "malie", "malli", "mallo", "malta", "malte", "malti", "malto",
+    "malva", "malve", "mamba", "mambi", "mambo", "mamma", "mamme", "mammi",
+    "mammo", "manaa", "manae", "manai", "manao", "manca", "mance", "manco",
+    "manda", "mande", "mandi", "mando", "manga", "mangi", "mango", "mania",
+    "manie", "manna", "manne", "mansa", "manse", "mansi", "manso", "manta",
+    "mante", "manti", "manto", "manza", "manze", "manzi", "manzo", "maona",
+    "maone", "maori", "mappa", "mappe", "mappi", "mappo", "marca", "marce",
+    "marci", "marco", "marea", "maree", "margi", "margo", "marma", "marmi",
+    "marmo", "marna", "marne", "marni", "marno", "marra", "marre", "marsa",
+    "marse", "marsi", "marso", "marza", "marze", "marzi", "marzo", "masai",
+    "massa", "masse", "massi", "masso", "masti", "matta", "matte", "matti",
+    "matto", "maura", "maure", "mauri", "mauro", "mauve", "mauvi", "mazza",
+    "mazze", "mazzi", "mazzo", "mbaka", "mbaya", "meaci", "meala", "meale",
+    "meali", "mealo", "meami", "meane", "meano", "meare", "meata", "meate",
+    "meati", "meato", "meava", "meavi", "meavo", "mecca", "media", "medie",
+    "medio", "meino", "mekea", "mekee", "mekei", "mekeo", "melai", "melba",
+    "melda", "melde", "meldi", "meldo", "melia", "melie", "melii", "melio",
+    "melma", "melme", "meloe", "meloi", "menai", "mence", "menci", "menda",
+    "mende", "mendi", "mendo", "menga", "menri", "mensa", "mense", "menta",
+    "mente", "menti", "mento", "meoni", "meoti", "merca", "merce", "merci",
+    "merco", "merda", "merde", "merga", "merge", "mergi", "mergo", "meria",
+    "merie", "merio", "merla", "merle", "merli", "merlo", "mersa", "merse",
+    "mersi", "merso", "mesca", "mesce", "mesci", "mesco", "messa", "messe",
+    "messi", "messo", "mesta", "meste", "mesti", "mesto", "meteo", "metri",
+    "metro", "metta", "mette", "metti", "metto", "mezza", "mezze", "mezzi",
+    "mezzo", "miasi", "micca", "micce", "micci", "micco", "miche", "micia",
+    "micie", "micio", "micro", "miele", "mieli", "mieta", "miete", "mieti",
+    "mieto", "migma", "migmi", "migra", "migri", "migro", "milia", "milio",
+    "mille", "milza", "milze", "mimai", "mimma", "mimme", "mimmi", "mimmo",
+    "minai", "minea", "minee", "minei", "mineo", "minga", "minge", "mingi",
+    "mingo", "minia", "minio", "minna", "minne", "minse", "minsi", "mioma",
+    "miomi", "miope", "miopi", "miosi", "mirai", "mirra", "mirre", "mirri",
+    "mirro", "mirti", "mirto", "misia", "misie", "misii", "misio", "missa",
+    "missi", "misso", "mista", "miste", "misti", "misto", "mitra", "mitre",
+    "mitri", "mitro", "mitti", "mitto", "mixai", "mixer", "mocci", "mochi",
+    "mocoa", "modem", "modio", "moggi", "mogia", "mogie", "mogio", "mogli",
+    "moina", "moine", "moira", "moire", "molai", "molca", "molce", "molla",
+    "molle", "molli", "mollo", "molta", "molte", "molti", "molto", "molva",
+    "molve", "monca", "monco", "monda", "monde", "mondi", "mondo", "monna",
+    "monne", "monta", "monte", "monti", "monto", "moqui", "morai", "morbi",
+    "morbo", "morda", "morde", "mordi", "mordo", "morfi", "morfo", "moria",
+    "morie", "morii", "morra", "morre", "morsa", "morse", "morsi", "morso",
+    "morta", "morte", "morti", "morto", "morva", "morve", "mosca", "mosce",
+    "mosci", "mosco", "mossa", "mosse", "mossi", "mosso", "mosti", "mosto",
+    "motta", "motte", "motti", "motto", "mouse", "movie", "mozza", "mozze",
+    "mozzi", "mozzo", "mucca", "mucci", "mucco", "muchi", "mudai", "muffa",
+    "muffe", "muffi", "muffo", "mufti", "mughi", "mugli", "mulsi", "mulso",
+    "multa", "multe", "multi", "multo", "mundi", "munga", "munge", "mungi",
+    "mungo", "munii", "munse", "munsi", "munta", "munte", "munti", "munto",
+    "muoia", "muoio", "muone", "muoni", "muore", "muori", "muova", "muove",
+    "muovi", "muovo", "murai", "murge", "muria", "murie", "murmi", "murra",
+    "murre", "musai", "musco", "musei", "museo", "mussa", "musse", "mussi",
+    "musso", "mutai", "mutua", "mutue", "mutui", "mutuo", "nabla", "nabli",
+    "nadir", "nafta", "nafte", "nahua", "naibi", "naide", "naidi", "naira",
+    "nakfa", "nanfa", "nanfe", "nanna", "nanne", "nante", "nanzi", "napea",
+    "napee", "nappa", "nappe", "nappi", "nappo", "narco", "nardi", "nardo",
+    "narra", "narri", "narro", "nasai", "nasca", "nasce", "nasci", "nasco",
+    "naspi", "naspo", "nassa", "nasse", "nassi", "nasso", "nasua", "nasue",
+    "natai", "natia", "natie", "natii", "natio", "natta", "natte", "nause",
+    "nauta", "nauti", "ndoga", "ndoge", "ndogi", "ndogo", "nebbi", "necai",
+    "necce", "necci", "nechi", "negai", "neghi", "negli", "nella", "nelle",
+    "nello", "nembi", "nembo", "nemea", "nemee", "nemei", "nemeo", "nence",
+    "nenci", "nenia", "nenie", "nerba", "nerbi", "nerbo", "nervi", "nervo",
+    "nesce", "nesci", "nessi", "nesso", "nesta", "nesti", "nesto", "netta",
+    "nette", "netti", "netto", "neuma", "neumi", "neura", "neure", "neuri",
+    "neuro", "nevai", "ngala", "nguni", "nibbi", "nicce", "nicci", "niego",
+    "nievi", "nievo", "nimbi", "nimbo", "ninfa", "ninfe", "ninja", "ninna",
+    "ninne", "ninni", "ninno", "niobi", "nisba", "nitra", "nitri", "nitro",
+    "niuna", "niune", "niuni", "niuno", "nivea", "nivee", "nivei", "niveo",
+    "nobel", "nocca", "noema", "noemi", "noesi", "nogai", "noghi", "nomai",
+    "nomea", "nomee", "nonio", "nonna", "nonne", "nonni", "nonno", "noria",
+    "norie", "norma", "norme", "normi", "normo", "norna", "norne", "notai",
+    "notta", "notte", "notti", "notto", "novai", "novio", "nozze", "nuche",
+    "nudai", "nugae", "nulla", "nulle", "nulli", "nullo", "nummi", "nummo",
+    "nunci", "nunzi", "nuoce", "nuoci", "nuora", "nuore", "nuota", "nuoti",
+    "nuoto", "nuova", "nuove", "nuovi", "nuovo", "nurse", "nutka", "nutra",
+    "nutre", "nutri", "nutro", "nyala", "nylon", "obbli", "obeli", "obelo",
+    "obera", "oberi", "obero", "obesa", "obese", "obesi", "obeso", "obice",
+    "obici", "obiti", "obito", "oblai", "oblia", "oblii", "oblio", "oboli",
+    "obolo", "ocche", "occhi", "ocimi", "ocimo", "ocrea", "ocree", "oculi",
+    "oculo", "odano", "oddio", "odiai", "odici", "odila", "odile", "odili",
+    "odilo", "odimi", "odine", "odino", "odire", "odita", "odite", "oditi",
+    "odito", "odiva", "odivi", "odivo", "odono", "odora", "odore", "odori",
+    "odoro", "odrai", "oecio", "offra", "offre", "offri", "offro", "ofide",
+    "ofidi", "ofite", "ofiti", "ogiva", "ogive", "oiana", "oidio", "okapi",
+    "oleai", "olfai", "oliai", "olino", "olire", "olita", "olite", "oliti",
+    "olito", "oliva", "olive", "olivi", "olivo", "olmio", "olona", "olone",
+    "olora", "olore", "olori", "oloro", "oltra", "oltre", "omaha", "omani",
+    "omano", "omari", "omaro", "omasi", "omaso", "ombra", "ombre", "ombri",
+    "ombro", "omega", "omeri", "omero", "omese", "omesi", "omini", "omino",
+    "omise", "omisi", "omnia", "omone", "omoni", "oncia", "ondai", "onera",
+    "onere", "oneri", "onero", "onese", "onesi", "onice", "onici", "onora",
+    "onore", "onori", "onoro", "onrai", "opaca", "opaci", "opaco", "opale",
+    "opali", "opata", "opera", "opere", "operi", "opero", "opica", "opici",
+    "opico", "opima", "opime", "opimi", "opimo", "opina", "opini", "opino",
+    "oppia", "oppio", "optai", "oraci", "orafa", "orafe", "orafi", "orafo",
+    "orala", "orale", "orali", "oralo", "orami", "orane", "orano", "orare",
+    "orari", "orata", "orate", "orati", "orato", "orava", "oravi", "oravo",
+    "orbai", "orche", "orchi", "orcio", "ordii", "orfea", "orfee", "orgia",
+    "oribi", "orice", "orici", "orige", "origi", "orina", "orine", "orini",
+    "orino", "orlai", "ormai", "ornai", "orobi", "oroci", "oroki", "oroma",
+    "orome", "oromi", "oromo", "orrea", "orree", "orrei", "orreo", "orrii",
+    "orzai", "osaci", "osage", "osagi", "osala", "osale", "osali", "osalo",
+    "osami", "osane", "osano", "osare", "osata", "osate", "osati", "osato",
+    "osava", "osavi", "osavo", "oscar", "osche", "osino", "osmio", "ossea",
+    "ossee", "ossei", "osseo", "ossia", "ostai", "osteo", "ostia", "ostie",
+    "ostio", "ostri", "ostro", "otica", "otici", "otico", "otide", "otidi",
+    "otite", "otiti", "ottri", "ovaia", "ovaie", "ovaio", "ovale", "ovali",
+    "ovari", "ovata", "ovate", "ovati", "ovato", "ovest", "ovile", "ovili",
+    "ovina", "ovine", "ovini", "ovino", "ovoli", "ovolo", "ovula", "ovuli",
+    "ovulo", "ovvia", "ovvie", "ovvii", "ovvio", "oyana", "ozena", "ozene",
+    "oziai", "ozino", "ozoni", "ozono", "pabbi", "pacai", "pacca", "pacco",
+    "pachi", "pacia", "pacio", "pacta", "padda", "padre", "padri", "paese",
+    "paesi", "pafia", "pafie", "pafii", "pafio", "pagai", "paggi", "paghe",
+    "paghi", "pagri", "pagro", "paini", "paino", "paisa", "palai", "palco",
+    "palea", "palee", "palei", "paleo", "palio", "palla", "palle", "palli",
+    "pallo", "palma", "palme", "palmi", "palmo", "palpa", "palpi", "palpo",
+    "palta", "palte", "pampa", "panai", "panca", "pance", "panda", "pande",
+    "pandi", "pando", "pania", "panie", "panna", "panne", "panni", "panno",
+    "pansa", "panse", "pansi", "panso", "panza", "panze", "paoli", "paolo",
+    "pappa", "pappe", "pappi", "pappo", "papua", "parai", "parca", "parce",
+    "parci", "parco", "pardi", "pardo", "parei", "pareo", "paria", "parie",
+    "parii", "pario", "parka", "parla", "parli", "parlo", "parma", "parme",
+    "parra", "parre", "parsa", "parse", "parsi", "parso", "parta", "parte",
+    "parti", "parto", "parva", "parve", "parvi", "parvo", "pasca", "pasce",
+    "pasci", "pasco", "passa", "passe", "passi", "passo", "pasta", "paste",
+    "pasti", "pasto", "patia", "patie", "patii", "patio", "patre", "patri",
+    "patta", "patte", "patti", "patto", "paura", "paure", "pausa", "pause",
+    "pausi", "pauso", "pavia", "pavie", "pazza", "pazze", "pazzi", "pazzo",
+    "peace", "peaci", "peana", "peani", "peata", "peate", "pecca", "pecce",
+    "pecci", "pecco", "pechi", "pecia", "pecie", "pedio", "pegni", "pegno",
+    "pekoe", "pelai", "pelea", "pelee", "pelei", "peleo", "pelle", "pelli",
+    "pelta", "pelte", "pelvi", "penai", "penda", "pende", "pendi", "pendo",
+    "penei", "peneo", "penna", "penne", "pensa", "pensi", "penso", "penta",
+    "pente", "penti", "pento", "peoci", "peone", "peoni", "peota", "peote",
+    "pepai", "pepli", "peplo", "pepsi", "perca", "perda", "perde", "perdi",
+    "perdo", "perii", "perla", "perle", "perni", "perno", "persa", "perse",
+    "persi", "perso", "pervi", "pesai", "pesca", "pesce", "pesci", "pesco",
+    "pesta", "peste", "pesti", "pesto", "petai", "petti", "petto", "pezza",
+    "pezze", "pezzi", "pezzo", "phone", "photo", "piace", "piaci", "piada",
+    "piade", "piaga", "piago", "piala", "piale", "piali", "pialo", "piami",
+    "piamo", "piana", "piane", "piani", "piano", "piare", "piata", "piate",
+    "piati", "piato", "piava", "piavi", "piavo", "picca", "picce", "picco",
+    "picea", "picee", "picei", "piceo", "piche", "pichi", "picio", "piede",
+    "piedi", "piega", "piego", "piena", "piene", "pieni", "pieno", "pieri",
+    "piese", "piesi", "pieta", "piete", "pieve", "pievi", "pighi", "pigia",
+    "pigii", "pigio", "pigli", "pigna", "pigne", "pigra", "pigre", "pigri",
+    "pigro", "piino", "pilai", "pilei", "pileo", "pilla", "pilli", "pillo",
+    "pinai", "pinca", "pince", "pinco", "pinea", "pinee", "pinei", "pineo",
+    "pinna", "pinne", "pinsa", "pinse", "pinta", "pinte", "pinti", "pinto",
+    "pinza", "pinze", "pinzi", "pinzo", "pioda", "piode", "piola", "piole",
+    "pioli", "piolo", "pione", "pioni", "piota", "piote", "pioti", "pioto",
+    "piova", "piove", "piovi", "piovo", "pipai", "pipia", "pipio", "pippa",
+    "pippe", "pippi", "pippo", "pipra", "pipre", "pirla", "pirli", "pirlo",
+    "pisce", "pisci", "pissi", "pista", "piste", "pitia", "pitie", "pitta",
+    "pitte", "pitti", "pitto", "piuma", "piume", "piumi", "piumo", "pizia",
+    "pizie", "pizio", "pizza", "pizze", "pizzi", "pizzo", "placa", "place",
+    "placo", "plaga", "plagi", "plana", "plani", "plano", "plebe", "plebi",
+    "plica", "plico", "ploia", "ploie", "plora", "plori", "ploro", "ploti",
+    "ploto", "plugo", "pluvi", "pocci", "poche", "pochi", "podio", "podza",
+    "podze", "podzi", "podzo", "poema", "poemi", "poeta", "poeti", "poeto",
+    "pogai", "pogge", "poggi", "poghi", "poise", "poker", "polca", "polii",
+    "polio", "polka", "polke", "polla", "polle", "polli", "pollo", "polpa",
+    "polpe", "polpi", "polpo", "polsi", "polso", "polta", "polte", "polve",
+    "polvi", "pomai", "pomfi", "pomfo", "pompa", "pompe", "pompi", "pompo",
+    "ponce", "ponci", "ponda", "pondi", "pondo", "ponfi", "ponfo", "ponga",
+    "pongo", "ponta", "ponte", "ponti", "ponto", "ponza", "ponzi", "ponzo",
+    "poppa", "poppe", "poppi", "poppo", "porca", "porci", "porco", "porga",
+    "porge", "porgi", "porgo", "porla", "porle", "porli", "porlo", "pormi",
+    "porne", "porno", "porre", "porri", "porro", "porse", "porsi", "porta",
+    "porte", "porti", "porto", "porvi", "posai", "posca", "possa", "posse",
+    "possi", "posso", "posta", "poste", "posti", "posto", "potai", "potei",
+    "potta", "potte", "poule", "pozza", "pozze", "pozzi", "pozzo", "praho",
+    "prana", "prasi", "prati", "prato", "prava", "prave", "pravi", "pravo",
+    "prece", "preci", "preco", "preda", "prede", "predi", "predo", "prega",
+    "pregi", "prego", "preli", "prema", "preme", "premi", "premo", "presa",
+    "prese", "presi", "preso", "prete", "preti", "previ", "price", "pride",
+    "prima", "prime", "primi", "primo", "priva", "prive", "privi", "privo",
+    "proba", "probe", "probi", "probo", "proci", "proco", "proda", "prode",
+    "prodi", "prole", "proli", "promo", "prona", "prone", "proni", "prono",
+    "prora", "prore", "prosa", "prose", "prosi", "proso", "proti", "proto",
+    "prova", "prove", "provi", "provo", "prozi", "pruda", "prude", "prudi",
+    "prudo", "pruna", "prune", "pruni", "pruno", "psico", "psoco", "psofi",
+    "psofo", "ptini", "ptino", "ptosi", "pucci", "puffi", "puffo", "pugge",
+    "puggi", "pugio", "pugna", "pugne", "pugni", "pugno", "puina", "puine",
+    "pulca", "pulce", "pulci", "pulii", "pulka", "pulke", "pulla", "pulle",
+    "pulli", "pullo", "pulsa", "pulsi", "pulso", "punci", "punga", "punge",
+    "pungi", "pungo", "punii", "punse", "punsi", "punta", "punte", "punti",
+    "punto", "puppa", "puppi", "puppo", "purai", "purea", "puree", "purga",
+    "purgo", "pussa", "pussi", "pusso", "pusta", "puste", "putai", "putii",
+    "putre", "putri", "putta", "putte", "putti", "putto", "puzza", "puzze",
+    "puzzi", "puzzo", "qasba", "qasbe", "qibla", "quada", "quade", "quadi",
+    "quado", "quale", "quali", "quare", "quark", "quasi", "queta", "queto",
+    "quici", "quija", "quije", "quiji", "quijo", "quina", "quine", "quini",
+    "quino", "quita", "quiti", "quito", "quivi", "quota", "quote", "quoti",
+    "quoto", "rabbi", "rabia", "racca", "racco", "racla", "racle", "radia",
+    "radio", "radon", "raffa", "raffe", "raffi", "raffo", "rafia", "rafie",
+    "raggi", "raghe", "ragia", "ragie", "ragli", "ragna", "ragne", "ragni",
+    "ragno", "raiai", "raide", "raidi", "raino", "raita", "raiti", "raito",
+    "ralla", "ralle", "ralli", "rallo", "ramai", "rambo", "ramea", "ramee",
+    "ramei", "ramen", "rameo", "ramia", "ramie", "ramni", "ramno", "rampa",
+    "rampe", "rampi", "rampo", "ranca", "rance", "ranci", "ranco", "randa",
+    "rande", "ranfi", "range", "rango", "ranni", "ranno", "rapai", "rapii",
+    "rappa", "rappe", "rasai", "rasce", "rasoi", "raspa", "raspe", "raspi",
+    "raspo", "rasta", "ratea", "ratei", "rateo", "ratio", "ratta", "ratte",
+    "ratti", "ratto", "rauca", "rauco", "razza", "razze", "razzi", "razzo",
+    "reale", "reali", "reame", "reami", "reati", "reato", "rebbi", "rebus",
+    "recai", "recei", "rechi", "recto", "redai", "redii", "reese", "reesi",
+    "regga", "regge", "reggi", "reggo", "regia", "regie", "regio", "regna",
+    "regni", "regno", "reide", "reidi", "reiki", "relax", "remai", "renai",
+    "renda", "rende", "rendi", "rendo", "renio", "renna", "renne", "rensa",
+    "rense", "repli", "replo", "requi", "resca", "resia", "resie", "respi",
+    "respo", "ressa", "resse", "ressi", "resta", "reste", "resti", "resto",
+    "retai", "retea", "retee", "retei", "reteo", "retri", "retro", "retta",
+    "rette", "retti", "retto", "reuma", "reumi", "rezza", "rezze", "rezzi",
+    "rezzo", "riale", "riali", "riama", "riami", "riamo", "riara", "riari",
+    "riaro", "ribes", "ricca", "ricce", "ricci", "ricco", "ridai", "ridda",
+    "ridde", "riddi", "riddo", "ridia", "rieda", "riede", "riedi", "riedo",
+    "riera", "rieri", "riero", "rifai", "riffa", "riffe", "rifui", "rigai",
+    "rigge", "righe", "righi", "rigna", "rigni", "rigno", "rimai", "rioca",
+    "rioco", "rioda", "riode", "riodi", "riodo", "rione", "rioni", "ripii",
+    "risai", "risei", "risia", "risii", "risma", "risme", "rispi", "rissa",
+    "risse", "rissi", "risso", "ritma", "ritmi", "ritmo", "ritta", "ritte",
+    "ritti", "ritto", "riusa", "riusi", "riuso", "rivai", "rizza", "rizze",
+    "rizzi", "rizzo", "roana", "roane", "roani", "roano", "robbi", "robot",
+    "rocca", "rocce", "rocco", "roche", "rochi", "rodai", "rodei", "rodeo",
+    "rodia", "rodie", "rodii", "rodio", "roese", "roesi", "rogai", "rogge",
+    "roggi", "roghi", "rogna", "rogne", "rogni", "rogno", "rolla", "rolli",
+    "rollo", "romba", "rombe", "rombi", "rombo", "romea", "romee", "romei",
+    "romeo", "rompa", "rompe", "rompi", "rompo", "ronca", "ronco", "ronda",
+    "ronde", "rondi", "rondo", "ronfa", "ronfe", "ronfi", "ronfo", "ronza",
+    "ronzi", "ronzo", "rorai", "rosai", "rosea", "rosee", "rosei", "roseo",
+    "rospi", "rospo", "rossa", "rosse", "rossi", "rosso", "rosta", "roste",
+    "rosti", "rosto", "rotai", "rotea", "rotei", "roteo", "rotta", "rotte",
+    "rotti", "rotto", "rouge", "rovai", "rozza", "rozze", "rozzi", "rozzo",
+    "rubai", "rubbi", "rubbo", "rubea", "rubee", "rubei", "rubeo", "rubli",
+    "rublo", "rubra", "rubre", "rubri", "rubro", "ruche", "ruese", "ruesi",
+    "ruffa", "ruffe", "rugai", "rugby", "rughe", "rughi", "rugli", "ruina",
+    "ruini", "ruino", "rulla", "rulli", "rullo", "rumai", "rumba", "rumbe",
+    "rumme", "rummi", "ruoli", "ruolo", "ruota", "ruote", "ruoti", "ruoto",
+    "rupia", "rupie", "ruppe", "ruppi", "rusca", "rusco", "ruspa", "ruspe",
+    "ruspi", "ruspo", "russa", "russe", "russi", "russo", "rutta", "rutti",
+    "rutto", "ruzza", "ruzze", "ruzzi", "ruzzo", "saale", "saali", "sabba",
+    "sabbi", "sabea", "sabee", "sabei", "sabeo", "sabia", "sabie", "sabii",
+    "sabio", "sabra", "sacca", "sacco", "sacia", "sacie", "sacio", "sacra",
+    "sacre", "sacri", "sacro", "saffo", "sagge", "saggi", "saghe", "saghi",
+    "sagii", "sagna", "sagni", "sagno", "sagra", "sagre", "sagri", "sagro",
+    "saiga", "saime", "saimi", "salai", "salda", "salde", "saldi", "saldo",
+    "salga", "salgo", "salii", "salio", "salma", "salme", "salmi", "salmo",
+    "salpa", "salpe", "salpi", "salpo", "salsa", "salse", "salsi", "salso",
+    "salta", "salti", "salto", "salva", "salve", "salvi", "salvo", "samba",
+    "samia", "samie", "samii", "samio", "sanai", "sanie", "sanno", "sansa",
+    "sanse", "santa", "sante", "santi", "santo", "saora", "sapio", "sappi",
+    "sarai", "sarda", "sarde", "sardi", "sardo", "sarei", "sarge", "sargo",
+    "sarta", "sarte", "sarti", "sarto", "sassi", "sasso", "sauna", "saune",
+    "saura", "saure", "sauri", "sauro", "savia", "savie", "savio", "sazia",
+    "sazie", "sazio", "sbafa", "sbafi", "sbafo", "sbava", "sbavi", "sbavo",
+    "sboba", "sbobe", "sbora", "sbore", "sbovi", "sbovo", "sbuca", "sbuco",
+    "scada", "scade", "scadi", "scado", "scafa", "scafe", "scafi", "scafo",
+    "scala", "scale", "scali", "scalo", "scana", "scane", "scapa", "scapi",
+    "scapo", "scari", "scaro", "scasa", "scasi", "scaso", "scava", "scavi",
+    "scavo", "sceda", "scede", "scema", "sceme", "scemi", "scemo", "scena",
+    "scene", "scesa", "scese", "scesi", "sceso", "schei", "sciai", "scifi",
+    "scifo", "scipa", "scipi", "scipo", "scira", "scire", "sciri", "sciro",
+    "scita", "scite", "sciti", "scoda", "scodi", "scodo", "scoia", "scoio",
+    "scola", "scoli", "scolo", "scopa", "scope", "scopi", "scopo", "scora",
+    "score", "scori", "scoro", "scota", "scote", "scoti", "scoto", "scova",
+    "scovi", "scovo", "scuce", "scuci", "scuda", "scudi", "scudo", "scuoi",
+    "scura", "scure", "scuri", "scuro", "scusa", "scuse", "scusi", "scuso",
+    "scuti", "scuto", "sdama", "sdami", "sdamo", "sdare", "sdata", "sdate",
+    "sdati", "sdato", "sdava", "sdavi", "sdavo", "sdazi", "sdica", "sdice",
+    "sdici", "sdico", "sdire", "sdite", "sdoga", "sdogo", "sdora", "sdori",
+    "sdoro", "sdrai", "sduca", "sduco", "secai", "secca", "secce", "secco",
+    "sechi", "sedai", "sedei", "sedia", "sedie", "sedio", "segai", "segga",
+    "seggi", "seggo", "seghe", "seghi", "segna", "segni", "segno", "segua",
+    "segue", "segui", "seguo", "seini", "seino", "selce", "selci", "selfa",
+    "selfi", "selfo", "sella", "selle", "selli", "sello", "selva", "selve",
+    "semai", "senna", "senne", "senni", "senno", "senoi", "sensi", "senso",
+    "senta", "sente", "senti", "sento", "senza", "seppe", "seppi", "sepsi",
+    "serba", "serbe", "serbi", "serbo", "seria", "serie", "serio", "sermo",
+    "serpa", "serpe", "serpi", "serpo", "serra", "serre", "serri", "serro",
+    "serti", "serto", "serva", "serve", "servi", "servo", "sesia", "sesie",
+    "sessa", "sesse", "sessi", "sesso", "sesta", "seste", "sesti", "sesto",
+    "setta", "sette", "setti", "setto", "sezza", "sezze", "sezzi", "sezzo",
+    "sfama", "sfami", "sfamo", "sfare", "sfasa", "sfasi", "sfaso", "sfata",
+    "sfate", "sfati", "sfato", "sfece", "sfeci", "sfera", "sfere", "sfida",
+    "sfide", "sfidi", "sfido", "sfiga", "sfila", "sfili", "sfilo", "sfina",
+    "sfini", "sfino", "sfizi", "sfoca", "sfoci", "sfoco", "sfoga", "sfogo",
+    "sfora", "sfori", "sforo", "sfuma", "sfumi", "sfumo", "sfuri", "sfusa",
+    "sfuse", "sfusi", "sfuso", "sgama", "sgami", "sgamo", "sgara", "sgari",
+    "sgaro", "sgasa", "sgasi", "sgaso", "sgela", "sgeli", "sgelo", "sgola",
+    "sgoli", "sgolo", "sgura", "sguri", "sguro", "siamo", "siano", "siate",
+    "siche", "sicli", "siclo", "sidri", "sidro", "sieda", "siede", "siedi",
+    "siedo", "siepa", "siepe", "siepi", "siepo", "sieri", "siero", "siete",
+    "sigla", "sigle", "sigli", "siglo", "sigma", "sigmi", "sigua", "siici",
+    "siila", "siile", "siili", "siilo", "siimi", "siine", "siiti", "silfi",
+    "silfo", "silli", "sillo", "silos", "silvi", "sinti", "sipai", "sirma",
+    "sirme", "sirte", "sirti", "sisma", "sismi", "sismo", "sitai", "sitii",
+    "situa", "situi", "situo", "sizio", "sizza", "sizze", "slama", "slami",
+    "slamo", "slava", "slave", "slavi", "slavo", "slebi", "slebo", "slega",
+    "slego", "slice", "slide", "sloga", "slogo", "sluma", "slumi", "slumo",
+    "smaga", "smagi", "smago", "smani", "smela", "smeli", "smelo", "smera",
+    "smeri", "smero", "smile", "smina", "smini", "smino", "smira", "smiri",
+    "smiro", "smise", "smisi", "smoda", "smodi", "smodo", "smova", "smove",
+    "smovi", "smovo", "smura", "smuri", "smuro", "smusa", "smusi", "smuso",
+    "snasa", "snasi", "snaso", "sneva", "snevi", "snevo", "snida", "snidi",
+    "snido", "snipe", "snoda", "snodi", "snodo", "snuda", "snudi", "snudo",
+    "soana", "soane", "soani", "soano", "soave", "soavi", "sobri", "socci",
+    "socco", "socia", "socie", "socio", "sodai", "sodio", "soffi", "sofia",
+    "sofie", "soghe", "sogli", "sogna", "sogni", "sogno", "solai", "solca",
+    "solco", "solda", "soldi", "soldo", "solea", "solee", "solei", "soleo",
+    "solfa", "solfe", "solfi", "solfo", "solgo", "solio", "solla", "solle",
+    "solli", "sollo", "solta", "solte", "solti", "solto", "solva", "solve",
+    "solvi", "solvo", "somma", "somme", "sommi", "sommo", "somni", "sonai",
+    "sonar", "sonco", "sonda", "sonde", "sondi", "sondo", "songa", "songe",
+    "songi", "songo", "sonii", "sonio", "sonni", "sonno", "sopii", "sopra",
+    "sorai", "sorba", "sorbe", "sorbi", "sorbo", "sorca", "sorci", "sorda",
+    "sorde", "sordi", "sordo", "sorga", "sorge", "sorgi", "sorgo", "sorra",
+    "sorre", "sorsa", "sorse", "sorsi", "sorso", "sorta", "sorte", "sorti",
+    "sorto", "sosia", "sosta", "soste", "sosti", "sosto", "sotho", "sotta",
+    "sotti", "sotto", "sovra", "sozio", "sozza", "sozze", "sozzi", "sozzo",
+    "spada", "spade", "spago", "spaia", "spaio", "spala", "spali", "spalo",
+    "spana", "spani", "spano", "spara", "spari", "sparo", "spasa", "spase",
+    "spasi", "spaso", "spata", "spate", "spati", "spato", "spazi", "speck",
+    "speco", "speda", "spedi", "spedo", "spela", "speli", "spelo", "speme",
+    "spemi", "spene", "speni", "spepa", "spepe", "spera", "spere", "speri",
+    "spero", "spesa", "spese", "spesi", "speso", "spezi", "spiai", "spica",
+    "spiga", "spigo", "spina", "spine", "spini", "spino", "spira", "spire",
+    "spiri", "spiro", "spola", "spole", "spone", "sponi", "spora", "spore",
+    "sport", "sposa", "spose", "sposi", "sposo", "sprue", "spula", "spuli",
+    "spulo", "spuma", "spume", "spumi", "spumo", "spura", "spuri", "spuro",
+    "sputa", "sputi", "sputo", "stadi", "stage", "staia", "staio", "stame",
+    "stami", "stana", "stani", "stano", "stara", "stare", "stari", "staro",
+    "stasa", "stasi", "staso", "stata", "state", "stati", "stato", "stava",
+    "stavi", "stavo", "steca", "stele", "steli", "stelo", "steno", "steri",
+    "stero", "stesa", "stese", "stesi", "steso", "stibi", "stici", "stico",
+    "stiga", "stigi", "stigo", "stila", "stile", "stili", "stilo", "stima",
+    "stime", "stimi", "stimo", "stina", "stini", "stino", "stipa", "stipe",
+    "stipi", "stipo", "stira", "stiri", "stiro", "stiva", "stive", "stivi",
+    "stivo", "stoga", "stogo", "stoia", "stoio", "stola", "stole", "stoma",
+    "stomi", "stona", "stone", "stoni", "stono", "store", "stori", "stria",
+    "strie", "strio", "studi", "stufa", "stufe", "stufi", "stufo", "stura",
+    "sture", "sturi", "sturo", "stuta", "stuti", "stuto", "suari", "suave",
+    "suavi", "subbi", "subii", "succi", "succo", "suchi", "sudai", "sugai",
+    "sugga", "sugge", "suggi", "suggo", "sughi", "sugli", "sugna", "sugne",
+    "suide", "suidi", "suina", "suine", "suini", "suino", "suite", "sulka",
+    "sulla", "sulle", "sullo", "summa", "summe", "sunna", "sunne", "sunti",
+    "sunto", "suola", "suole", "suoli", "suolo", "suona", "suoni", "suono",
+    "suora", "suore", "super", "surfa", "surfi", "surfo", "surga", "surge",
+    "surgi", "surgo", "surma", "surra", "surre", "surse", "sursi", "surta",
+    "surte", "surti", "surto", "susci", "sushi", "sussi", "susta", "suste",
+    "sutha", "suthe", "suthi", "sutho", "sutra", "sutri", "sutro", "suzza",
+    "suzzi", "suzzo", "svaga", "svago", "svani", "svapa", "svapi", "svapo",
+    "svari", "svasa", "svasi", "svaso", "svela", "sveli", "svelo", "svena",
+    "sveni", "sveno", "sveva", "sveve", "svevi", "svevo", "sviai", "svina",
+    "svini", "svino", "svisa", "svisi", "sviso", "svita", "sviti", "svito",
+    "sviva", "svivi", "svivo", "svizi", "svola", "svoli", "svolo", "svota",
+    "svoti", "svoto", "svuoi", "swazi", "tabla", "tacca", "tacce", "tacci",
+    "tacco", "taffi", "tafia", "tafie", "tafii", "tafio", "tagga", "taggo",
+    "tagli", "taide", "taidi", "taiga", "taiko", "taina", "taine", "taini",
+    "taino", "talco", "talea", "talee", "talli", "tallo", "talpa", "talpe",
+    "tamia", "tanai", "tanca", "tanco", "tanfa", "tanfi", "tanfo", "tanga",
+    "tange", "tango", "tanna", "tanni", "tanno", "tanta", "tante", "tanti",
+    "tanto", "tappa", "tappe", "tappi", "tappo", "tarai", "tarda", "tarde",
+    "tardi", "tardo", "targa", "targo", "tarla", "tarli", "tarlo", "tarma",
+    "tarme", "tarmi", "tarmo", "tarpa", "tarpi", "tarpo", "tarsi", "tarso",
+    "tasca", "tassa", "tasse", "tassi", "tasso", "tasta", "taste", "tasti",
+    "tasto", "tatti", "tatto", "tatua", "tatui", "tatuo", "taura", "taure",
+    "tauri", "tauro", "tazza", "tazze", "tebea", "tebee", "tebei", "tebeo",
+    "tecca", "teche", "tecno", "tedia", "tedio", "tegea", "tegee", "tegei",
+    "tegeo", "teghe", "teide", "teidi", "teina", "teine", "teita", "teite",
+    "teiti", "telai", "temei", "tempa", "tempe", "tempi", "tempo", "tenda",
+    "tende", "tendi", "tendo", "tenei", "tenga", "tenge", "tengo", "tenia",
+    "tenie", "tenne", "tenni", "tenno", "tensa", "tense", "tenta", "tenti",
+    "tento", "tenue", "tenui", "tenza", "tenze", "tepee", "teppa", "teppe",
+    "terbi", "terga", "terge", "tergi", "tergo", "terme", "termo", "terna",
+    "terne", "terni", "terno", "terra", "terre", "tersa", "terse", "tersi",
+    "terso", "terza", "terze", "terzi", "terzo", "tesai", "tesla", "tesle",
+    "tessa", "tesse", "tessi", "tesso", "testa", "teste", "testi", "testo",
+    "tetra", "tetre", "tetri", "tetro", "tetta", "tette", "tetti", "tetto",
+    "theta", "tiade", "tiadi", "tiara", "tiare", "tiasi", "tiaso", "tibia",
+    "tibie", "tiene", "tieni", "tifai", "tigli", "tigna", "tigne", "tigni",
+    "tigno", "tigra", "tigre", "tigri", "tigro", "tigua", "tilde", "tildi",
+    "tilla", "tille", "tilli", "tillo", "timpa", "timpe", "tinca", "tinga",
+    "tinge", "tingi", "tingo", "tinse", "tinsi", "tinta", "tinte", "tinti",
+    "tinto", "tioli", "tiolo", "tirai", "tirsi", "tirso", "tizia", "tizie",
+    "tizio", "tizzi", "tizzo", "tmesi", "toast", "tocai", "tocca", "tocco",
+    "tochi", "toghe", "toghi", "togli", "tokai", "tolda", "tolde", "tolga",
+    "tolgo", "tolla", "tolle", "tolse", "tolsi", "tolta", "tolte", "tolti",
+    "tolto", "tomai", "tomba", "tombe", "tombi", "tombo", "tonai", "tonda",
+    "tonde", "tondi", "tondo", "tonfa", "tonfi", "tonfo", "tonia", "tonie",
+    "tonni", "tonno", "tonta", "tonte", "tonti", "tonto", "topoi", "toppa",
+    "toppe", "toppi", "toppo", "toque", "torba", "torbe", "torbi", "torbo",
+    "torca", "torce", "torci", "torco", "tordi", "tordo", "torea", "torei",
+    "toreo", "torio", "torli", "torlo", "torma", "torme", "torna", "torni",
+    "torno", "torre", "torri", "torse", "torsi", "torso", "torta", "torte",
+    "torti", "torto", "torva", "torve", "torvi", "torvo", "tosai", "tosca",
+    "tosco", "tossa", "tosse", "tossi", "tosso", "tosta", "toste", "tosti",
+    "tosto", "totem", "tozza", "tozze", "tozzi", "tozzo", "trace", "traci",
+    "trade", "trago", "trama", "trame", "trami", "tramo", "trana", "trani",
+    "trano", "trapa", "trape", "trare", "trave", "travi", "trema", "tremi",
+    "tremo", "trena", "treni", "treno", "trevi", "trevo", "triai", "tribi",
+    "tribo", "tribu", "triga", "trike", "trina", "trine", "trini", "trino",
+    "trita", "trite", "triti", "trito", "trivi", "troco", "troia", "troie",
+    "troll", "trona", "trone", "troni", "trono", "tropi", "tropo", "trota",
+    "trote", "trova", "trovi", "trovo", "truca", "truce", "truci", "truka",
+    "truke", "tsuga", "tubai", "tufai", "tuffa", "tuffi", "tuffo", "tughe",
+    "tulio", "tulle", "tumba", "tunna", "tunne", "tunni", "tunno", "tuona",
+    "tuoni", "tuono", "turai", "turba", "turbe", "turbi", "turbo", "turca",
+    "turco", "turma", "turme", "turna", "turni", "turno", "turpe", "turpi",
+    "tusca", "tusco", "tutai", "tutor", "tutsi", "tutta", "tutte", "tutti",
+    "tutto", "tuzia", "tuzie", "ubbia", "ubbie", "ubera", "ubere", "uberi",
+    "ubero", "ubica", "ubico", "ubini", "ubino", "uccia", "uccio", "udire",
+    "udita", "udite", "uditi", "udito", "udiva", "udivi", "udivo", "udrai",
+    "udrei", "ufizi", "uggia", "uggii", "uggio", "ugnai", "ugola", "ugole",
+    "ukase", "ukiyo", "ulama", "ulani", "ulano", "ulema", "ulese", "ulesi",
+    "ulice", "ulici", "ulite", "uliti", "uliva", "ulive", "ulivi", "ulivo",
+    "ultra", "ulula", "ulule", "ululi", "ululo", "umana", "umane", "umani",
+    "umano", "umata", "umate", "umati", "umato", "umbra", "umbre", "umbri",
+    "umbro", "umica", "umici", "umico", "umida", "umide", "umidi", "umido",
+    "umile", "umili", "umore", "umori", "unari", "unica", "unici", "unico",
+    "unire", "unita", "unite", "uniti", "unito", "univa", "univi", "univo",
+    "unqua", "unque", "untai", "upupa", "upupe", "urali", "urati", "urato",
+    "urese", "uresi", "urica", "urici", "urico", "urina", "urine", "urini",
+    "urino", "urlai", "urlii", "urlio", "urone", "uroni", "urtai", "usaci",
+    "usala", "usale", "usali", "usalo", "usami", "usane", "usano", "usare",
+    "usata", "usate", "usati", "usato", "usava", "usavi", "usavo", "uscii",
+    "uscio", "usino", "usura", "usure", "usuri", "usuro", "uteri", "utero",
+    "utese", "utesi", "utile", "utili", "uvala", "uvale", "uvina", "uvine",
+    "uvola", "uvole", "uvosa", "uvose", "uvosi", "uvoso", "uvula", "uvule",
+    "uxori", "vacai", "vacca", "vacci", "vachi", "vacua", "vacue", "vacui",
+    "vacuo", "vaffa", "vagai", "vaghe", "vaghi", "vagii", "vagli", "vaiai",
+    "valga", "valgo", "valla", "valle", "valli", "vallo", "valsa", "valse",
+    "valsi", "valso", "valva", "valve", "vammi", "vampa", "vampe", "vampi",
+    "vampo", "vanai", "vanea", "vanei", "vaneo", "vanga", "vango", "vania",
+    "vanie", "vanii", "vanio", "vanne", "vanni", "vanno", "vanta", "vanti",
+    "vanto", "varai", "varca", "varco", "varea", "varee", "varia", "varie",
+    "vario", "varva", "varve", "vasai", "vasca", "vasta", "vaste", "vasti",
+    "vasto", "vatti", "vauda", "vaude", "vecce", "vecia", "vecio", "vedda",
+    "vegge", "veggi", "vegli", "velai", "velia", "velie", "velli", "vello",
+    "velma", "velme", "venai", "venda", "vende", "vendi", "vendo", "venga",
+    "vengi", "vengo", "venia", "venie", "venne", "venni", "venta", "venti",
+    "vento", "vepre", "vepri", "vepsa", "vepse", "vepsi", "vepso", "verbi",
+    "verbo", "verde", "verdi", "verga", "verge", "vergi", "vergo", "verla",
+    "verle", "verme", "vermi", "vermo", "verna", "verne", "verni", "verno",
+    "verri", "verro", "versa", "verse", "versi", "verso", "verta", "verte",
+    "verti", "verto", "verve", "verza", "verze", "vesce", "vespa", "vespe",
+    "vessa", "vessi", "vesso", "vesta", "veste", "vesti", "vesto", "vetri",
+    "vetro", "vetta", "vette", "vezzi", "vezzo", "viado", "viale", "viali",
+    "viari", "vibra", "vibri", "vibro", "vichi", "video", "viene", "vieni",
+    "viera", "viere", "vieri", "viero", "vieta", "viete", "vieti", "vieto",
+    "vigli", "vigna", "vigne", "vilai", "vilii", "villa", "ville", "villi",
+    "villo", "vimai", "vinai", "vinca", "vince", "vinci", "vinco", "vinea",
+    "vinee", "vinse", "vinsi", "vinta", "vinte", "vinti", "vinto", "viola",
+    "viole", "violi", "violo", "vipla", "viple", "virai", "virei", "vireo",
+    "virga", "virgo", "virtu", "virus", "visai", "visco", "vispa", "vispe",
+    "vispi", "vispo", "visse", "vissi", "vista", "viste", "visti", "visto",
+    "vitae", "vitai", "vitro", "vitta", "vitte", "vitti", "vitto", "vivai",
+    "vizia", "vizio", "vizza", "vizze", "vizzi", "vizzo", "vocai", "vochi",
+    "vocia", "vocii", "vocio", "vodka", "vogai", "voghe", "voghi", "vogli",
+    "voice", "voile", "volai", "volca", "volco", "volee", "volga", "volge",
+    "volgi", "volgo", "volle", "volli", "volpa", "volpe", "volpi", "volpo",
+    "volse", "volsi", "volta", "volte", "volti", "volto", "volva", "volve",
+    "volvi", "volvo", "vomii", "vorai", "vosco", "votai", "votii", "vulga",
+    "vulgo", "vulva", "vulve", "vuole", "vuota", "vuote", "vuoti", "vuoto",
+    "wakhi", "wasca", "wasce", "wasci", "wasco", "wayaa", "wayae", "wayai",
+    "wayao", "widia", "xenia", "xenie", "xenon", "xhosa", "yagua", "yamea",
+    "yamee", "yamei", "yameo", "yaqui", "yoghi", "yucca", "yuchi", "yurta",
+    "yurte", "zabri", "zabro", "zaffa", "zaffe", "zaffi", "zaffo", "zaina",
+    "zaine", "zaini", "zaino", "zaire", "zamba", "zambo", "zamia", "zamie",
+    "zampa", "zampe", "zampi", "zampo", "zanca", "zande", "zanna", "zanne",
+    "zanni", "zanno", "zappa", "zappe", "zappi", "zappo", "zarri", "zarro",
+    "zatta", "zatte", "zebra", "zebre", "zebri", "zebro", "zecca", "zecco",
+    "zelai", "zenda", "zende", "zendi", "zendo", "zenit", "zeppa", "zeppe",
+    "zeppi", "zeppo", "zerbi", "zerbo", "zerga", "zerge", "zergi", "zergo",
+    "zetti", "zetto", "zifio", "zigai", "zighi", "zigna", "zigni", "zigno",
+    "zilla", "zilli", "zillo", "zinca", "zinco", "zinia", "zinie", "zinna",
+    "zinne", "zinni", "zinno", "ziona", "zione", "zioni", "zippa", "zippi",
+    "zippo", "zirbi", "zirbo", "zirla", "zirli", "zirlo", "zitta", "zitte",
+    "zitti", "zitto", "zizza", "zizze", "zoeci", "zolfa", "zolfi", "zolfo",
+    "zolla", "zolle", "zolli", "zollo", "zomba", "zombi", "zombo", "zompa",
+    "zompi", "zompo", "zonai", "zonzo", "zooma", "zoomi", "zoomo", "zoppa",
+    "zoppe", "zoppi", "zoppo", "zoque", "zoqui", "zozza", "zozze", "zozzi",
+    "zozzo", "zuava", "zuave", "zuavi", "zuavo", "zucca", "zuffa", "zuffe",
+    "zughi", "zumai", "zuppa", "zuppe", "zuppi", "zuppo", "zurla", "zurli",
+    "zurlo"
+  ];
+// --VOCAB-END--
+
+// TENTATIVI è l'unione di soluzioni + extra (costruito a runtime)
+const TENTATIVI = new Set([...SOLUZIONI, ..._TENTATIVI_EXTRA]);
+
+// ══════════════════════════════════════════════════════════
+//  STATO
+// ══════════════════════════════════════════════════════════
+const MAX_RIGHE = 6;
+const LEN       = 5;
+
+let parola     = "";
+let griglia    = [];   // griglia[riga][col] = lettera
+let colori     = [];   // colori[riga][col]  = "green"|"yellow"|"gray"|""
+let riga       = 0;
+let col        = 0;
+let finita     = false;
+let tasti      = {};  // lettera → colore migliore sulla tastiera
+
+const INFINITE_STATS_KEY = "parole_inf_stats";
+const DAILY_STATS_KEY    = "parole_daily_stats";
+const GAME_KEY           = "parole_inf_game_no";
+const MODE_KEY           = "parole_mode";
+const INFINITE_STATE_KEY = "parole_inf_state";
+const DAILY_STATE_KEY    = "parole_daily_state";
+const DAILY_EPOCH        = "2026-01-01";
+const CLIENT_KEY         = "parole_client_id";
+
+let numeroPartita = 1;
+let modalita = "giornaliera";
+let giornoPartita = "";
+let clientId = "";
+let sessionId = "";
+let modalitaDopoChiusura = null;
+
+// ── Statistiche (localStorage) ──
+function getStatsKey() {
+  return modalita === "giornaliera" ? DAILY_STATS_KEY : INFINITE_STATS_KEY;
+}
+function getStats() {
+  const d = { played:0, won:0, streak:0, best:0, dist:{1:0,2:0,3:0,4:0,5:0,6:0} };
+  try { return JSON.parse(localStorage.getItem(getStatsKey())) || d; }
+  catch { return d; }
+}
+function saveStats(s) {
+  try { localStorage.setItem(getStatsKey(), JSON.stringify(s)); } catch {}
+}
+function getNumeroPartita() {
+  try {
+    const n = parseInt(localStorage.getItem(GAME_KEY) || "1", 10);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  } catch {
+    return 1;
+  }
+}
+function saveNumeroPartita(n) {
+  try { localStorage.setItem(GAME_KEY, String(n)); } catch {}
+}
+function getModalitaSalvata() {
+  try {
+    const saved = localStorage.getItem(MODE_KEY);
+    return saved === "infinita" ? "infinita" : "giornaliera";
+  } catch {
+    return "giornaliera";
+  }
+}
+function nuovoId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+function getClientId() {
+  try {
+    const existing = localStorage.getItem(CLIENT_KEY);
+    if (existing) return existing;
+    const created = nuovoId();
+    localStorage.setItem(CLIENT_KEY, created);
+    return created;
+  } catch {
+    return nuovoId();
+  }
+}
+function saveModalita(mode) {
+  try { localStorage.setItem(MODE_KEY, mode); } catch {}
+}
+function getStateKey() {
+  return modalita === "giornaliera" ? DAILY_STATE_KEY : INFINITE_STATE_KEY;
+}
+function caricaStatoPartita(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "null");
+  } catch {
+    return null;
+  }
+}
+function modalitaIniziale() {
+  const oggi = giornoLocale();
+  const daily = caricaStatoPartita(DAILY_STATE_KEY);
+  if (daily?.giornoPartita === oggi && !daily.finita) return "giornaliera";
+  const infinite = caricaStatoPartita(INFINITE_STATE_KEY);
+  if (infinite?.parola && !infinite.finita && getModalitaSalvata() === "infinita") return "infinita";
+  return "giornaliera";
+}
+function salvaStatoPartita() {
+  const payload = {
+    modalita,
+    parola,
+    griglia,
+    colori,
+    riga,
+    col,
+    finita,
+    tasti,
+    numeroPartita,
+    giornoPartita,
+    sessionId
+  };
+  try { localStorage.setItem(getStateKey(), JSON.stringify(payload)); } catch {}
+}
+function giornoLocale() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+function numeroSfidaGiornaliera(dayKey = giornoPartita || giornoLocale()) {
+  const dayMs = new Date(`${dayKey}T00:00:00`).getTime();
+  const epochMs = new Date(`${DAILY_EPOCH}T00:00:00`).getTime();
+  return Math.max(1, Math.floor((dayMs - epochMs) / 86400000) + 1);
+}
+function hashSeed(n) {
+  let seed = (n ^ 0x9e3779b9) >>> 0;
+  seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+  return seed >>> 0;
+}
+const POOL_5 = [SOLUZIONI_BASSISSIMA, SOLUZIONI_BASSA, SOLUZIONI_MEDIA, SOLUZIONI_ALTA, SOLUZIONI_ALTISSIMA];
+function _scegli5(pesiCum, rnd100) {
+  for (let i = 0; i < pesiCum.length; i++) {
+    if (rnd100 < pesiCum[i]) return POOL_5[i];
+  }
+  return POOL_5[POOL_5.length - 1];
+}
+function scegliPoolPesato(seed) {
+  const bucket = hashSeed(seed) % 100;
+  return _scegli5(PESI_CUM_DAILY, bucket);
+}
+function scegliSoluzioneCasuale() {
+  const roll = Math.floor(Math.random() * 100);
+  const pool = _scegli5(PESI_CUM_INFINITA, roll);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function parolaGiornaliera(dayKey) {
+  const n = numeroSfidaGiornaliera(dayKey);
+  const pool = scegliPoolPesato(n);
+  return pool[hashSeed(n + 17) % pool.length];
+}
+function resetPartita(parolaSelezionata) {
+  parola  = parolaSelezionata;
+  sessionId = nuovoId();
+  griglia = Array.from({length: MAX_RIGHE}, () => Array(LEN).fill(""));
+  colori  = Array.from({length: MAX_RIGHE}, () => Array(LEN).fill(""));
+  riga = 0;
+  col = 0;
+  finita = false;
+  tasti = {};
+  costruisciGriglia();
+  costruisciTastiera();
+  document.getElementById("m-end").classList.remove("open");
+  salvaStatoPartita();
+}
+function ridisegnaGriglia() {
+  for (let rr = 0; rr < MAX_RIGHE; rr++) {
+    for (let cc = 0; cc < LEN; cc++) {
+      const t = tile(rr, cc);
+      const lettera = griglia[rr]?.[cc] || "";
+      const colore = colori[rr]?.[cc] || "";
+      t.textContent = lettera.toUpperCase();
+      t.className = "tile";
+      if (lettera && !colore) t.classList.add("filled");
+      if (colore) t.classList.add(colore);
+    }
+  }
+}
+function ripristinaStato(state) {
+  parola = state.parola;
+  griglia = state.griglia;
+  colori = state.colori;
+  riga = state.riga;
+  col = state.col;
+  finita = state.finita;
+  tasti = state.tasti || {};
+  numeroPartita = state.numeroPartita || getNumeroPartita();
+  giornoPartita = state.giornoPartita || "";
+  sessionId = state.sessionId || nuovoId();
+  costruisciGriglia();
+  ridisegnaGriglia();
+  costruisciTastiera();
+  document.getElementById("m-end").classList.remove("open");
+  if (finita) {
+    const tentativiUsati = colori.filter(row => row.some(Boolean)).length;
+    const vinta = griglia.some(row => row.join("") === parola);
+    renderFinePartita(vinta, vinta ? tentativiUsati : 0);
+    document.getElementById("m-end").classList.add("open");
+  }
+}
+function aggiornaHeader() {
+  const badge = document.getElementById("mode-badge");
+  const btnMode = document.getElementById("btn-mode");
+  const btnNuova = document.getElementById("btn-nuova");
+  if (modalita === "giornaliera") {
+    badge.textContent = "24H";
+    btnMode.textContent = "∞";
+    btnMode.title = "Modalità infinita";
+    btnNuova.textContent = "▶ GIOCA INFINITA";
+  } else {
+    badge.textContent = "∞";
+    btnMode.textContent = "24H";
+    btnMode.title = "Modalità giornaliera";
+    btnNuova.textContent = "▶ NUOVA PARTITA";
+  }
+}
+function avviaPartitaInfinita(forceNew = false) {
+  giornoPartita = "";
+  if (!forceNew) {
+    const saved = caricaStatoPartita(INFINITE_STATE_KEY);
+    if (saved?.parola) {
+      ripristinaStato(saved);
+      return;
+    }
+  }
+  const hasGameNumber = !!localStorage.getItem(GAME_KEY);
+  if (!hasGameNumber) numeroPartita = 1;
+  else numeroPartita = forceNew ? getNumeroPartita() + 1 : getNumeroPartita();
+  saveNumeroPartita(numeroPartita);
+  resetPartita(scegliSoluzioneCasuale());
+}
+function avviaPartitaGiornaliera() {
+  const oggi = giornoLocale();
+  const saved = caricaStatoPartita(DAILY_STATE_KEY);
+  if (saved?.giornoPartita === oggi && saved?.parola) {
+    ripristinaStato(saved);
+    return;
+  }
+  giornoPartita = oggi;
+  resetPartita(parolaGiornaliera(oggi));
+}
+function impostaModalita(mode, forceNewInfinite = false) {
+  modalita = mode === "giornaliera" ? "giornaliera" : "infinita";
+  saveModalita(modalita);
+  aggiornaHeader();
+  chiudiModali();
+  if (modalita === "giornaliera") avviaPartitaGiornaliera();
+  else avviaPartitaInfinita(forceNewInfinite);
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+function nuovaPartita() {
+  if (modalita === "giornaliera") {
+    impostaModalita("infinita", true);
+    return;
+  }
+  avviaPartitaInfinita(true);
+}
+
+function costruisciGriglia() {
+  const g = document.getElementById("grid");
+  g.innerHTML = "";
+  for (let r = 0; r < MAX_RIGHE; r++) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.id = `r${r}`;
+    for (let c = 0; c < LEN; c++) {
+      const t = document.createElement("div");
+      t.className = "tile";
+      t.id = `t${r}-${c}`;
+      row.appendChild(t);
+    }
+    g.appendChild(row);
+  }
+}
+
+const KB = [
+  ["q","w","e","r","t","y","u","i","o","p"],
+  ["a","s","d","f","g","h","j","k","l"],
+  ["INVIO","z","x","c","v","b","n","m","⌫"]
+];
+function costruisciTastiera() {
+  KB.forEach((fila, fi) => {
+    const el = document.getElementById(`kb${fi}`);
+    el.innerHTML = "";
+    fila.forEach(k => {
+      const btn = document.createElement("button");
+      btn.className = "key" + (k.length > 1 ? " wide" : "");
+      btn.textContent = k.toUpperCase();
+      btn.dataset.k = k;
+      const col = tasti[k];
+      if (col) btn.classList.add(col);
+      btn.addEventListener("click", () => gestisciTasto(k));
+      el.appendChild(btn);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  INPUT
+// ══════════════════════════════════════════════════════════
+function gestisciTasto(k) {
+  if (finita) return;
+  if (k === "⌫" || k === "Backspace")      cancella();
+  else if (k === "INVIO" || k === "Enter") conferma();
+  else if (/^[a-zA-Z]$/.test(k))          scrivi(k.toLowerCase());
+}
+
+function scrivi(lettera) {
+  if (col >= LEN) return;
+  griglia[riga][col] = lettera;
+  const t = tile(riga, col);
+  t.textContent = lettera.toUpperCase();
+  t.classList.add("filled");
+  t.classList.remove("animate-pop");
+  void t.offsetWidth;                 // forza reflow per restart animazione
+  t.classList.add("animate-pop");
+  col++;
+  salvaStatoPartita();
+}
+
+function cancella() {
+  if (col <= 0) return;
+  col--;
+  griglia[riga][col] = "";
+  const t = tile(riga, col);
+  t.textContent = "";
+  t.classList.remove("filled", "animate-pop");
+  salvaStatoPartita();
+}
+
+function conferma() {
+  if (col < LEN) { scuoti(riga); toast("Parola troppo corta"); return; }
+  const tentativo = griglia[riga].join("");
+  if (!TENTATIVI.has(tentativo)) {
+    inviaPlaytest({
+      event_type: "rejected_guess",
+      attempt_no: riga + 1,
+      guess: tentativo
+    });
+    scuoti(riga);
+    toast("Parola non nel dizionario");
+    return;
+  }
+  const risultato = valuta(tentativo, parola);
+  colori[riga] = risultato;
+  rivela(riga, risultato, () => {
+    const ultimaRiga = riga >= MAX_RIGHE - 1;
+    const vinta = tentativo === parola;
+    inviaPlaytest({
+      event_type: "accepted_guess",
+      attempt_no: riga + 1,
+      guess: tentativo,
+      result_pattern: patternRisultato(risultato),
+      finished: vinta || ultimaRiga ? 1 : 0,
+      won: vinta ? 1 : 0
+    });
+    aggiornaTasti(tentativo, risultato);
+    costruisciTastiera();
+    if (tentativo === parola) {
+      finita = true;
+      const r = riga;
+      setTimeout(() => finePartita(true, r + 1), 300);
+    } else if (riga >= MAX_RIGHE - 1) {
+      finita = true;
+      setTimeout(() => finePartita(false, 0), 300);
+    }
+    riga++;
+    col = 0;
+    salvaStatoPartita();
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  ALGORITMO DI VALUTAZIONE
+//  Prima passata: verde (lettera e posizione esatti)
+//  Seconda passata: giallo (lettera presente, posizione sbagliata)
+//  Entrambe le passate gestiscono le lettere duplicate correttamente
+// ══════════════════════════════════════════════════════════
+function valuta(tentativo, segreto) {
+  const res  = Array(LEN).fill("gray");
+  const sec  = segreto.split("");
+  const ten  = tentativo.split("");
+  // prima passata: verde
+  for (let i = 0; i < LEN; i++) {
+    if (ten[i] === sec[i]) {
+      res[i] = "green";
+      sec[i] = null;
+      ten[i] = null;
+    }
+  }
+  // seconda passata: giallo
+  for (let i = 0; i < LEN; i++) {
+    if (ten[i] === null) continue;
+    const idx = sec.indexOf(ten[i]);
+    if (idx !== -1) {
+      res[i]    = "yellow";
+      sec[idx]  = null;
+    }
+  }
+  return res;
+}
+
+// ══════════════════════════════════════════════════════════
+//  ANIMAZIONE RIVELAZIONE  (flip CSS per-tile con delay)
+// ══════════════════════════════════════════════════════════
+function rivela(r, risultato, cb) {
+  const DELAY = 300;  // ms tra un tile e il successivo
+  for (let c = 0; c < LEN; c++) {
+    const t = tile(r, c);
+    setTimeout(() => {
+      // flip out
+      t.style.transition = "transform .15s ease-in";
+      t.style.transform  = "rotateX(-90deg)";
+      setTimeout(() => {
+        // applica colore
+        t.classList.remove("filled");
+        t.classList.add(risultato[c]);
+        // flip in
+        t.style.transition = "transform .15s ease-out";
+        t.style.transform  = "rotateX(0deg)";
+        // callback dopo l'ultima tile
+        if (c === LEN - 1) setTimeout(cb, 180);
+      }, 150);
+    }, c * DELAY);
+  }
+}
+
+function aggiornaTasti(tentativo, risultato) {
+  const prio = { green: 3, yellow: 2, gray: 1 };
+  for (let i = 0; i < LEN; i++) {
+    const l = tentativo[i];
+    if ((prio[risultato[i]] || 0) > (prio[tasti[l]] || 0))
+      tasti[l] = risultato[i];
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  ANIMAZIONI
+// ══════════════════════════════════════════════════════════
+function scuoti(r) {
+  for (let c = 0; c < LEN; c++) {
+    const t = tile(r, c);
+    t.classList.remove("animate-shake");
+    void t.offsetWidth;
+    t.classList.add("animate-shake");
+    setTimeout(() => t.classList.remove("animate-shake"), 400);
+  }
+}
+
+function balza(r, cb) {
+  for (let c = 0; c < LEN; c++) {
+    const t = tile(r, c);
+    setTimeout(() => {
+      t.classList.add("animate-bounce");
+      setTimeout(() => t.classList.remove("animate-bounce"), 500);
+    }, c * 80);
+  }
+  if (cb) setTimeout(cb, LEN * 80 + 500);
+}
+
+// ══════════════════════════════════════════════════════════
+//  FINE PARTITA
+// ══════════════════════════════════════════════════════════
+function renderFinePartita(vinta, numRighe) {
+  const titoli = ["Perfetto! ðŸŽ‰","Ottima! ðŸŒŸ","Brava! ðŸ‘","Bene! ðŸ˜Š","Ci siamo quasi ðŸ˜…","Per un pelo! ðŸ˜¤"];
+  document.getElementById("end-titolo").textContent = vinta
+    ? (titoli[numRighe - 1] || "Vinta!") : "Fine partita ðŸ˜”";
+  document.getElementById("end-parola").textContent = parola.toUpperCase();
+  document.getElementById("end-sub").textContent = vinta
+    ? `Indovinata in ${numRighe} tentativ${numRighe === 1 ? "o" : "i"}!`
+    : "La parola era:";
+
+  const E = { green:"ðŸŸ©", yellow:"ðŸŸ¨", gray:"â¬›" };
+  document.getElementById("end-emoji").textContent =
+    colori.slice(0, vinta ? numRighe : MAX_RIGHE)
+          .map(row => row.map(c => E[c] || "â¬œ").join(""))
+          .join("\n");
+
+  const s = getStats();
+  const pct = s.played ? Math.round(s.won / s.played * 100) : 0;
+  document.getElementById("s1").textContent = s.played;
+  document.getElementById("s2").textContent = pct + "%";
+  document.getElementById("s3").textContent = s.streak;
+  document.getElementById("s4").textContent = s.best;
+}
+
+// Override pulito per evitare problemi di encoding nel popup finale.
+function renderFinePartita(vinta, numRighe) {
+  const titoli = [
+    "Perfetto! \u{1F389}",
+    "Ottima! \u{1F31F}",
+    "Brava! \u{1F44F}",
+    "Bene! \u{1F60A}",
+    "Ci siamo quasi \u{1F605}",
+    "Per un pelo! \u{1F624}"
+  ];
+  document.getElementById("end-titolo").textContent = vinta
+    ? (titoli[numRighe - 1] || "Vinta!")
+    : "Fine partita \u{1F614}";
+  document.getElementById("end-parola").textContent = parola.toUpperCase();
+  document.getElementById("end-sub").textContent = vinta
+    ? `Indovinata in ${numRighe} tentativ${numRighe === 1 ? "o" : "i"}!`
+    : "La parola era:";
+
+  const E = {
+    green: "\u{1F7E9}",
+    yellow: "\u{1F7E8}",
+    gray: "\u{2B1B}"
+  };
+  document.getElementById("end-emoji").textContent =
+    colori.slice(0, vinta ? numRighe : MAX_RIGHE)
+          .map(row => row.map(c => E[c] || "\u{2B1C}").join(""))
+          .join("\n");
+
+  const s = getStats();
+  const pct = s.played ? Math.round(s.won / s.played * 100) : 0;
+  document.getElementById("s1").textContent = s.played;
+  document.getElementById("s2").textContent = pct + "%";
+  document.getElementById("s3").textContent = s.streak;
+  document.getElementById("s4").textContent = s.best;
+}
+
+function finePartita(vinta, numRighe) {
+  if (vinta) balza(riga);
+  inviaPlaytest({
+    event_type: "game_end",
+    attempt_no: vinta ? numRighe : MAX_RIGHE,
+    finished: 1,
+    won: vinta ? 1 : 0
+  });
+
+  const s = getStats();
+  s.played++;
+  if (vinta) {
+    s.won++;
+    s.streak++;
+    if (s.streak > s.best) s.best = s.streak;
+    s.dist[numRighe] = (s.dist[numRighe] || 0) + 1;
+  } else {
+    s.streak = 0;
+  }
+  saveStats(s);
+  modalitaDopoChiusura = modalita === "giornaliera" ? "infinita" : null;
+  renderFinePartita(vinta, numRighe);
+  salvaStatoPartita();
+  setTimeout(() => document.getElementById("m-end").classList.add("open"), 600);
+}
+
+// ══════════════════════════════════════════════════════════
+//  STATISTICHE MODALE
+// ══════════════════════════════════════════════════════════
+function mostraStats() {
+  const s   = getStats();
+  const pct = s.played ? Math.round(s.won / s.played * 100) : 0;
+  document.getElementById("ss1").textContent = s.played;
+  document.getElementById("ss2").textContent = pct + "%";
+  document.getElementById("ss3").textContent = s.streak;
+  document.getElementById("ss4").textContent = s.best;
+
+  const maxVal = Math.max(...Object.values(s.dist), 1);
+  const dc = document.getElementById("dist");
+  dc.innerHTML = '<div class="dist-title">DISTRIBUZIONE TENTATIVI</div>';
+  for (let i = 1; i <= 6; i++) {
+    const v   = s.dist[i] || 0;
+    const pct = Math.max(v / maxVal * 100, 5);
+    const curr = finita && colori.filter(r => r.some(c => c)).length === i;
+    dc.innerHTML += `
+      <div class="drow">
+        <span class="dnum">${i}</span>
+        <div class="dbar-bg">
+          <div class="dbar${curr ? " win" : ""}" style="width:${pct}%">${v}</div>
+        </div>
+      </div>`;
+  }
+  document.getElementById("m-stats").classList.add("open");
+}
+
+// ══════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════
+let _toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+function challengeIdCorrente() {
+  return modalita === "giornaliera" ? `daily-${numeroSfidaGiornaliera()}` : `inf-${numeroPartita}`;
+}
+
+const API_BASE_STORAGE_KEY = "parole_api_base_url";
+
+function normalizeApiBaseUrl(value) {
+  return typeof value === "string" ? value.trim().replace(/\/+$/, "") : "";
+}
+
+function resolveApiBaseUrl() {
+  const globalValue = normalizeApiBaseUrl(window.WOORDLE_API_BASE_URL);
+  if (globalValue) {
+    return globalValue;
+  }
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const queryValue = normalizeApiBaseUrl(params.get("api_base") || params.get("apiBase") || "");
+    if (queryValue) {
+      localStorage.setItem(API_BASE_STORAGE_KEY, queryValue);
+      return queryValue;
+    }
+  } catch {}
+
+  try {
+    return normalizeApiBaseUrl(localStorage.getItem(API_BASE_STORAGE_KEY) || "");
+  } catch {
+    return "";
+  }
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}
+
+function inviaPlaytest(payload) {
+  const body = JSON.stringify({
+    client_id: clientId,
+    session_id: sessionId,
+    mode: modalita,
+    challenge_id: challengeIdCorrente(),
+    game_no: modalita === "giornaliera" ? null : numeroPartita,
+    daily_no: modalita === "giornaliera" ? numeroSfidaGiornaliera() : null,
+    solution: parola,
+    ...payload
+  });
+
+  fetch(apiUrl("/api/attempt"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true
+  }).catch(() => {});
+}
+
+function patternRisultato(risultato) {
+  const M = { green: "G", yellow: "Y", gray: "X" };
+  return risultato.map(c => M[c] || "_").join("");
+}
+
+function testoCondivisione() {
+  const vinta = griglia.some(row => row.join("") === parola);
+  const tentativiUsati = colori.filter(row => row.some(Boolean)).length;
+  const punteggio = vinta ? `${tentativiUsati}/6` : "X/6";
+  const E = { green:"🟩", yellow:"🟨", gray:"⬜️" };
+  const righe = colori
+    .slice(0, tentativiUsati || MAX_RIGHE)
+    .map(row => row.map(c => E[c] || "⬜️").join(""))
+    .join("\n");
+  if (modalita === "giornaliera") {
+    return `Par🇮🇹le #${numeroSfidaGiornaliera()} ${punteggio}\n\n${righe}`;
+  }
+  return `Par🇮🇹le ${numeroPartita} ${punteggio}\n\n${righe}`;
+}
+
+async function condividiRisultato() {
+  const testo = testoCondivisione();
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(testo);
+      toast("Risultato copiato");
+      return;
+    }
+
+    const area = document.createElement("textarea");
+    area.value = testo;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+
+    const copiato = document.execCommand("copy");
+    document.body.removeChild(area);
+    toast(copiato ? "Risultato copiato" : "Copia non disponibile");
+  } catch {
+    toast("Copia non disponibile");
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  UTILITY
+// ══════════════════════════════════════════════════════════
+function tile(r, c) { return document.getElementById(`t${r}-${c}`); }
+
+function chiudiModali() {
+  document.querySelectorAll(".overlay").forEach(m => m.classList.remove("open"));
+  if (modalitaDopoChiusura) {
+    const target = modalitaDopoChiusura;
+    modalitaDopoChiusura = null;
+    impostaModalita(target, true);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ══════════════════════════════════════════════════════════
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector(".overlay.open")) return;
+  if (e.key === "Backspace") gestisciTasto("⌫");
+  else if (e.key === "Enter") gestisciTasto("INVIO");
+  else gestisciTasto(e.key);
+});
+
+document.getElementById("btn-stats").addEventListener("click", mostraStats);
+document.getElementById("btn-mode").addEventListener("click", () =>
+  impostaModalita(modalita === "giornaliera" ? "infinita" : "giornaliera"));
+document.getElementById("btn-help").addEventListener("click",  () => document.getElementById("m-help").classList.add("open"));
+document.getElementById("btn-share").addEventListener("click", condividiRisultato);
+document.getElementById("btn-nuova").addEventListener("click",  nuovaPartita);
+document.getElementById("btn-close-end").addEventListener("click", chiudiModali);
+["c-end","c-stats","c-help"].forEach(id =>
+  document.getElementById(id).addEventListener("click", chiudiModali));
+document.querySelectorAll(".overlay").forEach(ov =>
+  ov.addEventListener("click", e => { if (e.target === ov) chiudiModali(); }));
+
+// ── AVVIO ──
+clientId = getClientId();
+numeroPartita = getNumeroPartita();
+impostaModalita(modalitaIniziale());
+</script>
+</body>
+</html>
