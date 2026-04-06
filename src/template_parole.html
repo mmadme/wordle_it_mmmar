@@ -1548,6 +1548,7 @@ let modalitaDopoChiusura = null;
 let dailyConfig = null;
 let dailyConfigPromise = null;
 let appReady = false;
+const DAILY_FETCH_TIMEOUT_MS = 4000;
 
 // ── Statistiche (localStorage) ──
 function getStatsKey() {
@@ -1673,11 +1674,18 @@ async function caricaDailyConfig(force = false) {
   if (!force && dailyConfigPromise) return dailyConfigPromise;
 
   dailyConfigPromise = (async () => {
+    let controller = null;
+    let timeoutId = null;
     try {
+      if (typeof AbortController !== "undefined") {
+        controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), DAILY_FETCH_TIMEOUT_MS);
+      }
       const resp = await fetch(apiUrl("/api/daily"), {
         method: "GET",
         headers: { "Accept": "application/json" },
-        cache: "no-store"
+        cache: "no-store",
+        signal: controller?.signal
       });
       if (!resp.ok) throw new Error(`daily endpoint ${resp.status}`);
       const payload = await resp.json();
@@ -1689,8 +1697,12 @@ async function caricaDailyConfig(force = false) {
     } catch (err) {
       console.warn("Fallback daily locale:", err);
       dailyConfig = buildLocalDailyConfig();
+      if (appReady) {
+        toast("Backend daily non raggiungibile: uso fallback locale");
+      }
       return dailyConfig;
     } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       dailyConfigPromise = null;
     }
   })();
@@ -2315,6 +2327,8 @@ document.querySelectorAll(".overlay").forEach(ov =>
 async function initApp() {
   clientId = getClientId();
   numeroPartita = getNumeroPartita();
+  costruisciGriglia();
+  costruisciTastiera();
   await impostaModalita(modalitaIniziale());
   appReady = true;
 }
