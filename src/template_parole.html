@@ -1545,6 +1545,9 @@ let giornoPartita = "";
 let clientId = "";
 let sessionId = "";
 let modalitaDopoChiusura = null;
+let dailyConfig = null;
+let dailyConfigPromise = null;
+let appReady = false;
 
 // ── Statistiche (localStorage) ──
 function getStatsKey() {
@@ -1606,9 +1609,8 @@ function caricaStatoPartita(key) {
   }
 }
 function modalitaIniziale() {
-  const oggi = giornoLocale();
   const daily = caricaStatoPartita(DAILY_STATE_KEY);
-  if (daily?.giornoPartita === oggi && !daily.finita) return "giornaliera";
+  if (daily?.parola && !daily.finita) return "giornaliera";
   const infinite = caricaStatoPartita(INFINITE_STATE_KEY);
   if (infinite?.parola && !infinite.finita && getModalitaSalvata() === "infinita") return "infinita";
   return "giornaliera";
@@ -1625,7 +1627,11 @@ function salvaStatoPartita() {
     tasti,
     numeroPartita,
     giornoPartita,
-    sessionId
+    sessionId,
+    challengeId: modalita === "giornaliera" ? challengeIdCorrente() : null,
+    dailyNo: modalita === "giornaliera" ? numeroDailyCorrente() : null,
+    dailyResetAt: modalita === "giornaliera" ? dailyConfig?.resets_at || null : null,
+    dailyTimezone: modalita === "giornaliera" ? dailyConfig?.timezone || null : null
   };
   try { localStorage.setItem(getStateKey(), JSON.stringify(payload)); } catch {}
 }
@@ -1640,6 +1646,56 @@ function numeroSfidaGiornaliera(dayKey = giornoPartita || giornoLocale()) {
   const dayMs = new Date(`${dayKey}T00:00:00`).getTime();
   const epochMs = new Date(`${DAILY_EPOCH}T00:00:00`).getTime();
   return Math.max(1, Math.floor((dayMs - epochMs) / 86400000) + 1);
+}
+function numeroDailyCorrente() {
+  return Number.isFinite(dailyConfig?.daily_no) ? dailyConfig.daily_no : numeroSfidaGiornaliera();
+}
+function challengeDailyCorrente() {
+  return dailyConfig?.challenge_id || `daily-${numeroDailyCorrente()}`;
+}
+function dailyConfigScaduta() {
+  const resetAtMs = Date.parse(dailyConfig?.resets_at || "");
+  return Number.isFinite(resetAtMs) && Date.now() >= resetAtMs;
+}
+function buildLocalDailyConfig() {
+  const dayKey = giornoLocale();
+  const dailyNo = numeroSfidaGiornaliera(dayKey);
+  return {
+    challenge_id: `daily-${dailyNo}`,
+    daily_no: dailyNo,
+    day_key: dayKey,
+    timezone: "browser-local",
+    resets_at: null
+  };
+}
+async function caricaDailyConfig(force = false) {
+  if (!force && dailyConfig && !dailyConfigScaduta()) return dailyConfig;
+  if (!force && dailyConfigPromise) return dailyConfigPromise;
+
+  dailyConfigPromise = (async () => {
+    try {
+      const resp = await fetch(apiUrl("/api/daily"), {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        cache: "no-store"
+      });
+      if (!resp.ok) throw new Error(`daily endpoint ${resp.status}`);
+      const payload = await resp.json();
+      if (!payload || !Number.isFinite(payload.daily_no) || !payload.challenge_id || !payload.day_key) {
+        throw new Error("payload daily non valido");
+      }
+      dailyConfig = payload;
+      return dailyConfig;
+    } catch (err) {
+      console.warn("Fallback daily locale:", err);
+      dailyConfig = buildLocalDailyConfig();
+      return dailyConfig;
+    } finally {
+      dailyConfigPromise = null;
+    }
+  })();
+
+  return dailyConfigPromise;
 }
 function hashSeed(n) {
   let seed = (n ^ 0x9e3779b9) >>> 0;
@@ -1662,10 +1718,12 @@ function scegliSoluzioneCasuale() {
   const pool = _scegli5(PESI_CUM_INFINITA, roll);
   return pool[Math.floor(Math.random() * pool.length)];
 }
-function parolaGiornaliera(dayKey) {
-  const n = numeroSfidaGiornaliera(dayKey);
+function parolaGiornalieraDaNumero(n) {
   const pool = scegliPoolPesato(n);
   return pool[hashSeed(n + 17) % pool.length];
+}
+function parolaGiornaliera(dayKey) {
+  return parolaGiornalieraDaNumero(numeroSfidaGiornaliera(dayKey));
 }
 function resetPartita(parolaSelezionata) {
   parola  = parolaSelezionata;
@@ -1747,22 +1805,24 @@ function avviaPartitaInfinita(forceNew = false) {
   saveNumeroPartita(numeroPartita);
   resetPartita(scegliSoluzioneCasuale());
 }
-function avviaPartitaGiornaliera() {
-  const oggi = giornoLocale();
+async function avviaPartitaGiornaliera() {
+  const currentDaily = await caricaDailyConfig();
   const saved = caricaStatoPartita(DAILY_STATE_KEY);
-  if (saved?.giornoPartita === oggi && saved?.parola) {
+  const sameChallenge = saved?.challengeId === currentDaily.challenge_id;
+  const sameLegacyDay = !saved?.challengeId && saved?.giornoPartita === currentDaily.day_key;
+  if ((sameChallenge || sameLegacyDay) && saved?.parola) {
     ripristinaStato(saved);
     return;
   }
-  giornoPartita = oggi;
-  resetPartita(parolaGiornaliera(oggi));
+  giornoPartita = currentDaily.day_key;
+  resetPartita(parolaGiornalieraDaNumero(currentDaily.daily_no));
 }
-function impostaModalita(mode, forceNewInfinite = false) {
+async function impostaModalita(mode, forceNewInfinite = false) {
   modalita = mode === "giornaliera" ? "giornaliera" : "infinita";
   saveModalita(modalita);
   aggiornaHeader();
   chiudiModali();
-  if (modalita === "giornaliera") avviaPartitaGiornaliera();
+  if (modalita === "giornaliera") await avviaPartitaGiornaliera();
   else avviaPartitaInfinita(forceNewInfinite);
 }
 
@@ -1770,8 +1830,9 @@ function impostaModalita(mode, forceNewInfinite = false) {
 //  INIT
 // ══════════════════════════════════════════════════════════
 function nuovaPartita() {
+  if (!appReady) return;
   if (modalita === "giornaliera") {
-    impostaModalita("infinita", true);
+    void impostaModalita("infinita", true);
     return;
   }
   avviaPartitaInfinita(true);
@@ -2109,7 +2170,7 @@ function toast(msg) {
 }
 
 function challengeIdCorrente() {
-  return modalita === "giornaliera" ? `daily-${numeroSfidaGiornaliera()}` : `inf-${numeroPartita}`;
+  return modalita === "giornaliera" ? challengeDailyCorrente() : `inf-${numeroPartita}`;
 }
 
 const API_BASE_STORAGE_KEY = "parole_api_base_url";
@@ -2153,7 +2214,7 @@ function inviaPlaytest(payload) {
     mode: modalita,
     challenge_id: challengeIdCorrente(),
     game_no: modalita === "giornaliera" ? null : numeroPartita,
-    daily_no: modalita === "giornaliera" ? numeroSfidaGiornaliera() : null,
+    daily_no: modalita === "giornaliera" ? numeroDailyCorrente() : null,
     solution: parola,
     ...payload
   });
@@ -2181,7 +2242,7 @@ function testoCondivisione() {
     .map(row => row.map(c => E[c] || "⬜️").join(""))
     .join("\n");
   if (modalita === "giornaliera") {
-    return `Par🇮🇹le #${numeroSfidaGiornaliera()} ${punteggio}\n\n${righe}`;
+    return `Par🇮🇹le #${numeroDailyCorrente()} ${punteggio}\n\n${righe}`;
   }
   return `Par🇮🇹le ${numeroPartita} ${punteggio}\n\n${righe}`;
 }
@@ -2230,6 +2291,7 @@ function chiudiModali() {
 //  EVENT LISTENERS
 // ══════════════════════════════════════════════════════════
 document.addEventListener("keydown", e => {
+  if (!appReady) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (document.querySelector(".overlay.open")) return;
   if (e.key === "Backspace") gestisciTasto("⌫");
@@ -2239,7 +2301,7 @@ document.addEventListener("keydown", e => {
 
 document.getElementById("btn-stats").addEventListener("click", mostraStats);
 document.getElementById("btn-mode").addEventListener("click", () =>
-  impostaModalita(modalita === "giornaliera" ? "infinita" : "giornaliera"));
+  appReady && void impostaModalita(modalita === "giornaliera" ? "infinita" : "giornaliera"));
 document.getElementById("btn-help").addEventListener("click",  () => document.getElementById("m-help").classList.add("open"));
 document.getElementById("btn-share").addEventListener("click", condividiRisultato);
 document.getElementById("btn-nuova").addEventListener("click",  nuovaPartita);
@@ -2250,9 +2312,14 @@ document.querySelectorAll(".overlay").forEach(ov =>
   ov.addEventListener("click", e => { if (e.target === ov) chiudiModali(); }));
 
 // ── AVVIO ──
-clientId = getClientId();
-numeroPartita = getNumeroPartita();
-impostaModalita(modalitaIniziale());
+async function initApp() {
+  clientId = getClientId();
+  numeroPartita = getNumeroPartita();
+  await impostaModalita(modalitaIniziale());
+  appReady = true;
+}
+
+void initApp();
 </script>
 </body>
 </html>

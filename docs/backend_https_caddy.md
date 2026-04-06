@@ -1,6 +1,6 @@
 # Backend HTTPS - Caddy
 
-Questa guida prepara il backend `woordle_new_github` per essere esposto in HTTPS usando Caddy come reverse proxy.
+Questa guida documenta come il backend `woordle_new_github` viene esposto in HTTPS usando Caddy come reverse proxy.
 
 Obiettivo:
 
@@ -8,7 +8,7 @@ Obiettivo:
 - mantenere il processo Python su una porta interna
 - rendere il backend compatibile con un frontend pubblicato su GitHub Pages
 
-## Perche' serve questa fase
+## Perche' serve
 
 GitHub Pages pubblica il frontend in HTTPS.
 
@@ -140,20 +140,9 @@ Questa parte e' gia' stata verificata:
 - listener locali presenti su `*:80` e `*:443`
 - redirect HTTP locale verificato con `308`
 - reverse proxy verso `127.0.0.1:8015` configurato
-
-Blocco attuale:
-
-- Let\'s Encrypt fallisce il challenge con:
-
-```text
-<backend-public-ip>: Timeout during connect (likely firewall problem)
-```
-
-Interpretazione pratica:
-
-- la VM ascolta correttamente su `80/443`
-- `iptables` locale consente `80/443`
-- manca ancora raggiungibilita' pubblica effettiva su `80` e/o `443` dal lato Oracle Cloud
+- backend pubblico servito in HTTPS tramite Caddy
+- frontend GitHub Pages configurato per usare un endpoint API HTTPS
+- `github_pages/api-config.js` valorizzato con un backend remoto HTTPS reale
 
 ## Cosa controllare su Oracle Cloud
 
@@ -164,11 +153,11 @@ Verificare nella VCN/subnet dell'istanza:
 - se l'istanza usa un NSG, le stesse regole devono essere presenti anche li'
 - la VNIC dell'istanza deve avere Public IPv4 attivo
 
-Finche' questo blocco non e' risolto, Caddy continuera' a ritentare l'emissione del certificato ma GitHub Pages restera' bloccato dal mixed content
+Questi controlli restano utili come diagnosi se HTTPS smette di funzionare dopo modifiche DNS, firewall o reboot infrastrutturali.
 
 ## CORS dopo GitHub Pages
 
-Quando avremo l'URL reale del frontend GitHub Pages, conviene restringere il backend:
+Ora che il frontend GitHub Pages e' parte del flusso reale, conviene restringere il backend:
 
 Nel file env del backend:
 
@@ -196,7 +185,7 @@ sudo systemctl restart woordle-backend
 
 ## Aggiornare il frontend GitHub Pages
 
-Quando HTTPS backend sara' attivo, il frontend Pages andra' rigenerato con:
+Se cambia il dominio backend oppure si vuole riallineare il pacchetto Pages, il frontend va rigenerato con:
 
 ```bash
 python3 build_github_pages.py --api-base https://<backend-domain>
@@ -207,10 +196,10 @@ Questo produrra' un `github_pages/api-config.js` coerente con il backend finale.
 ## Checklist
 
 - [x] Caddy installato
-- [ ] porte `80` e `443` pubblicamente raggiungibili
+- [x] porte `80` e `443` pubblicamente raggiungibili
 - [x] `/etc/caddy/Caddyfile` installato
 - [x] `caddy validate` ok
 - [x] `systemctl restart caddy` ok
 - [x] redirect HTTP locale verificato
-- [ ] backend raggiungibile in HTTPS
-- [ ] frontend GitHub Pages rigenerato con API base `https://<backend-domain>`
+- [x] backend raggiungibile in HTTPS
+- [x] frontend GitHub Pages rigenerato con API base `https://<backend-domain>`

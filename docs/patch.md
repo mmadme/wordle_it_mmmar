@@ -681,8 +681,8 @@ Mitigazione:
 - [x] hostname backend deciso
 - [x] strategia HTTPS chiarita
 - [x] deploy VPS backend stabilizzato
-- [ ] test end-to-end reale completato
-- [ ] documentazione finale aggiornata
+- [x] test end-to-end reale completato
+- [x] documentazione finale aggiornata
 
 ---
 
@@ -707,19 +707,30 @@ Usare questa sezione come log breve e cumulativo.
 - configurato Caddy come reverse proxy su `80/443` con redirect HTTP locale funzionante
 - verificato che l'emissione del certificato TLS puo' bloccarsi per timeout esterno su `80/443`, quindi l'apertura pubblica lato Oracle Cloud resta un punto critico da controllare
 
+### 2026-04-06
+
+- allineata la documentazione al fatto che la variante GitHub Pages + backend VPS risulta operativa
+- confermato nella repo locale l'uso di `api-config.js` con backend HTTPS reale
+- confermato che il flusso playtest continua a produrre eventi e report aggiornati
+- aggiornate le guide backend per trattare `8015` come porta interna e `443` come endpoint pubblico di riferimento
+- chiuso il vecchio blocco documentale relativo al challenge TLS come stato corrente della patch
+- corretto il backend per ricavare l'IP reale del client dietro reverse proxy invece di registrare solo `127.0.0.1`
+- introdotto endpoint `GET /api/daily` con timezone ufficiale `Europe/Rome`
+- aggiornata la giornaliera frontend per usare `daily_no`, `challenge_id` e `resets_at` restituiti dal backend
+
 ---
 
 ## Prossimo step consigliato
 
 Prossimo intervento da fare:
 
-- completare l'apertura pubblica di `80/443` lato Oracle Cloud e ritestare il certificato HTTPS di Caddy
+- decidere se mantenere il naming `woordle-backend-test.service` come definitivo oppure convergere su `woordle-backend.service`
+- verificare con un nuovo tentativo esterno che il reverse proxy inoltri gli header IP e che i nuovi record nel DB non risultino piu' come `127.0.0.1`
 
 Motivo:
 
-- frontend GitHub Pages, hostname stabile, servizio `systemd` e reverse proxy locale sono gia' pronti
-- il blocco principale rimasto per l'architettura finale e' il timeout esterno sul challenge TLS di Let's Encrypt
-- appena `https://<backend-domain>` rispondera' correttamente potremo rigenerare `github_pages/api-config.js` con l'URL finale
+- l'architettura GitHub Pages + backend HTTPS risulta gia' impostata e documentata
+- restano da chiudere solo dettagli operativi, non piu' l'impianto della soluzione
 
 ## Riferimenti ufficiali
 

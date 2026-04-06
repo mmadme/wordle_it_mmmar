@@ -32,7 +32,7 @@ Per il backend remoto attuale:
 - porta: `8015`
 - origine consentita: inizialmente `*` oppure il dominio frontend effettivo
 
-Quando il frontend GitHub Pages sara' online, conviene restringere:
+Ora che il frontend GitHub Pages fa parte del flusso reale, conviene restringere:
 
 - `BACKEND_ALLOW_ORIGINS=https://<tuo-frontend>.github.io`
 
@@ -52,10 +52,16 @@ Stato operativo corrente:
 - usare `8015` come porta definitiva del backend Python
 - tenere `woordle-backend-test.service` come servizio attivo finche' non decidiamo se rinominarlo
 
-URL di test atteso:
+URL di test interno atteso:
 
 ```text
-http://<backend-domain>:8015/parole-infinito.html
+http://127.0.0.1:8015/parole-infinito.html
+```
+
+URL pubblico atteso tramite Caddy:
+
+```text
+https://<backend-domain>
 ```
 
 ### Installazione del service su porta `8015`
@@ -107,15 +113,18 @@ journalctl -u woordle-backend-test -f
 ```bash
 ss -ltnp | grep 8015
 curl -I http://127.0.0.1:8015/parole-infinito.html
-curl -I http://<backend-domain>:8015/parole-infinito.html
+curl -I https://<backend-domain>
 ```
 
 #### 7. Se vuoi provarlo da fuori
 
-Ricorda che per accesso esterno serve aprire anche la porta `8015`:
+Nel flusso finale non serve esporre pubblicamente la porta `8015`.
 
-- in Oracle Cloud
-- nel firewall della VM
+Per accesso esterno conviene pubblicare solo:
+
+- `80` e `443` verso Caddy
+
+La porta `8015` dovrebbe restare interna alla VM, salvo debug temporanei molto controllati.
 
 ### 1. Creare il file ambiente di sistema
 

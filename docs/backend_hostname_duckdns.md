@@ -1,12 +1,12 @@
 # Backend Hostname - DuckDNS
 
-Questa guida serve per ottenere un hostname stabile gratuito per il backend VPS usando DuckDNS.
+Questa guida serve per ottenere e mantenere un hostname stabile gratuito per il backend VPS usando DuckDNS.
 
 Obiettivo:
 
 - avere un nome fisso al posto dell'IP pubblico
 - esempio finale: `mionome.duckdns.org`
-- usare quel nome per il backend API della futura architettura ibrida
+- usare quel nome come base DNS del backend API della architettura ibrida
 
 ## Cosa risolve e cosa non risolve
 
@@ -18,14 +18,14 @@ DuckDNS risolve:
 
 DuckDNS da solo non risolve:
 
-- HTTPS del backend applicativo
-- rimozione automatica della porta `:8015`
-- eventuali blocchi mixed content se il frontend verra' pubblicato in HTTPS
+- terminazione HTTPS del backend applicativo
+- rimozione automatica della porta `:8015` lato frontend finale
+- eventuali blocchi mixed content se il frontend usa HTTPS e il backend resta in HTTP
 
 Per GitHub Pages, questa guida va letta come:
 
 - passo utile per avere un hostname stabile
-- non ancora soluzione finale per HTTPS
+- base DNS della soluzione finale, completata poi da Caddy e HTTPS
 
 ## Prerequisiti
 
@@ -136,41 +136,46 @@ crontab -l
 
 ## Passo 6 - Usare l'hostname con il backend
 
-Finche' il backend resta pubblicato sulla porta `8015`, il link backend sara':
+Nel flusso finale consigliato:
+
+- il backend Python continua ad ascoltare internamente su `8015`
+- Caddy espone pubblicamente il backend su `https://woordletest.duckdns.org`
+
+Quindi il frontend GitHub Pages deve puntare a:
 
 ```text
-http://woordletest.duckdns.org:8015
+https://woordletest.duckdns.org
 ```
 
-Per esempio:
+La porta `8015` resta utile solo per test interni o diagnostica locale sulla VPS, per esempio:
 
 ```text
-http://woordletest.duckdns.org:8015/parole-infinito.html
-http://woordletest.duckdns.org:8015/api/attempt
+http://127.0.0.1:8015/parole-infinito.html
 ```
 
 ## Passo 7 - Aggiornare il frontend GitHub Pages
 
-Quando avremo deciso il valore reale del backend, dovremo aggiornare:
+Quando cambia il dominio backend o si rigenera il pacchetto Pages, va aggiornato:
 
 - `github_pages/api-config.js`
 
 oppure rigenerarlo con:
 
 ```bash
-python3 build_github_pages.py --api-base http://woordletest.duckdns.org:8015
+python3 build_github_pages.py --api-base https://woordletest.duckdns.org
 ```
 
-## Limite attuale da tenere presente
+## Nota architetturale finale
 
-Se il frontend verra' pubblicato su GitHub Pages, sara' in HTTPS.
+GitHub Pages pubblica il frontend in HTTPS.
 
-Quindi un backend in solo HTTP, anche con hostname DuckDNS stabile, puo' essere bloccato dal browser per mixed content.
+Per questo motivo il frontend finale non dovrebbe puntare al backend in HTTP su `:8015`, anche se DuckDNS risolve correttamente.
 
 Tradotto:
 
-- DuckDNS e' un ottimo passo per la Fase 5
-- per la versione finale GitHub Pages servira' quasi certamente anche una Fase HTTPS del backend
+- DuckDNS risolve il DNS dinamico
+- Caddy risolve HTTPS e reverse proxy pubblico
+- il backend Python su `8015` resta un dettaglio interno dell'infrastruttura
 
 ## Checklist pratica
 
@@ -180,7 +185,7 @@ Tradotto:
 - [ ] `./duckdns/update_duckdns.sh` eseguito con esito `OK`
 - [ ] hostname DuckDNS risolve verso la VPS
 - [ ] cron configurato
-- [ ] backend raggiungibile con hostname fisso
+- [ ] backend raggiungibile in HTTPS tramite hostname fisso
 
 ## Riferimenti ufficiali
 

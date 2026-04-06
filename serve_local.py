@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import argparse
 import http.server
+import ipaddress
 import json
 import socket
 import sqlite3
 import webbrowser
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -14,6 +17,8 @@ DIST_DIR = BASE_DIR / "dist"
 DATA_DIR = BASE_DIR / "data"
 INDEX_FILE = DIST_DIR / "parole-infinito.html"
 DB_FILE = DATA_DIR / "playtest.db"
+DAILY_EPOCH = date.fromisoformat("2026-01-01")
+DAILY_TIMEZONE = "Europe/Rome"
 
 
 class ReusableThreadingHTTPServer(http.server.ThreadingHTTPServer):
@@ -75,6 +80,83 @@ def normalize_allowed_origins(values: list[str] | None) -> tuple[str, ...]:
     return tuple(dict.fromkeys(origins))
 
 
+def parse_ip_candidate(value: str) -> str | None:
+    candidate = value.strip().strip('"')
+    if not candidate or candidate.lower() == "unknown":
+        return None
+
+    if candidate.startswith("["):
+        end = candidate.find("]")
+        if end == -1:
+            return None
+        candidate = candidate[1:end]
+    elif candidate.count(":") == 1:
+        host, port = candidate.rsplit(":", 1)
+        if port.isdigit():
+            candidate = host
+
+    try:
+        ipaddress.ip_address(candidate)
+    except ValueError:
+        return None
+    return candidate
+
+
+def extract_forwarded_ip(headers: http.client.HTTPMessage) -> str | None:
+    x_forwarded_for = headers.get("X-Forwarded-For", "")
+    for item in x_forwarded_for.split(","):
+        candidate = parse_ip_candidate(item)
+        if candidate:
+            return candidate
+
+    for header_name in ("X-Real-IP", "CF-Connecting-IP"):
+        candidate = parse_ip_candidate(headers.get(header_name, ""))
+        if candidate:
+            return candidate
+
+    forwarded = headers.get("Forwarded", "")
+    for group in forwarded.split(","):
+        for part in group.split(";"):
+            key, _, value = part.strip().partition("=")
+            if key.lower() != "for":
+                continue
+            candidate = parse_ip_candidate(value)
+            if candidate:
+                return candidate
+
+    return None
+
+
+def resolve_remote_ip(headers: http.client.HTTPMessage, peer_ip: str) -> str:
+    try:
+        peer = ipaddress.ip_address(peer_ip)
+    except ValueError:
+        return peer_ip
+
+    # Trust proxy headers only when the direct peer is the local reverse proxy.
+    if peer.is_loopback:
+        forwarded_ip = extract_forwarded_ip(headers)
+        if forwarded_ip:
+            return forwarded_ip
+    return peer_ip
+
+
+def build_daily_metadata(now: datetime | None = None) -> dict[str, object]:
+    tz = ZoneInfo(DAILY_TIMEZONE)
+    local_now = now.astimezone(tz) if now is not None else datetime.now(tz)
+    day_key = local_now.date()
+    daily_no = max(1, (day_key - DAILY_EPOCH).days + 1)
+    next_reset = datetime.combine(day_key + timedelta(days=1), time.min, tzinfo=tz)
+    return {
+        "challenge_id": f"daily-{daily_no}",
+        "daily_no": daily_no,
+        "day_key": day_key.isoformat(),
+        "timezone": DAILY_TIMEZONE,
+        "server_now": local_now.isoformat(),
+        "resets_at": next_reset.isoformat(),
+    }
+
+
 def init_db() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_FILE) as conn:
@@ -128,7 +210,7 @@ class PlaytestHandler(http.server.SimpleHTTPRequestHandler):
         if origin is None:
             return
         self.send_header("Access-Control-Allow-Origin", origin)
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         if origin != "*":
             self.send_header("Vary", "Origin")
@@ -154,6 +236,15 @@ class PlaytestHandler(http.server.SimpleHTTPRequestHandler):
             return
         super().do_OPTIONS()
 
+    def do_GET(self) -> None:
+        if self.path == "/api/daily":
+            self.send_api_json(200, build_daily_metadata())
+            return
+        if self.is_api_request():
+            self.send_api_json(404, {"error": "Endpoint non trovato"})
+            return
+        super().do_GET()
+
     def do_POST(self) -> None:
         if self.path == "/api/attempt":
             self.handle_attempt()
@@ -167,7 +258,15 @@ class PlaytestHandler(http.server.SimpleHTTPRequestHandler):
         if not self.log_http:
             return
         message = format % args
-        print(f"[{self.log_date_time_string()}] {self.client_address[0]} {self.command} {self.path} -> {message}")
+        peer_ip = self.client_address[0]
+        remote_ip = resolve_remote_ip(self.headers, peer_ip)
+        if remote_ip != peer_ip:
+            print(
+                f"[{self.log_date_time_string()}] peer={peer_ip} remote={remote_ip} "
+                f"{self.command} {self.path} -> {message}"
+            )
+            return
+        print(f"[{self.log_date_time_string()}] {peer_ip} {self.command} {self.path} -> {message}")
 
     def handle_attempt(self) -> None:
         try:
@@ -180,7 +279,7 @@ class PlaytestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_api_json(400, {"error": "Payload non valido"})
             return
 
-        remote_ip = self.headers.get("CF-Connecting-IP") or self.client_address[0]
+        remote_ip = resolve_remote_ip(self.headers, self.client_address[0])
         user_agent = self.headers.get("User-Agent", "")
         meta_json = json.dumps(payload, ensure_ascii=False)
 

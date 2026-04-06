@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-04-06 - Daily backend-driven e fix IP dietro proxy
+
+### Modificato
+
+- `serve_local.py` aggiornato per ricavare l'IP reale del client da header di proxy standard quando il peer diretto e' il loopback locale.
+- `serve_local.py` esteso con `GET /api/daily` che espone `challenge_id`, `daily_no`, `day_key`, `timezone` e `resets_at`.
+- `src/template_parole.html` aggiornato per usare il backend come fonte autorevole della daily mantenendo la logica di gioco nel frontend.
+- documentazione operativa aggiornata con verifica della daily ufficiale e note sul tracciamento IP dietro Caddy.
+
+### Verificato
+
+- `python3 -m py_compile build.py build_github_pages.py serve_local.py report_playtest.py`
+- `python3 build.py`
+- `GET /api/daily` con risposta JSON coerente su `Europe/Rome`
+- controllo sintattico JavaScript del frontend generato tramite `node --check`
+
+## 2026-04-06 - Allineamento documentazione deploy reale
+
+### Modificato
+
+- `README.md` aggiornato per riflettere lo stato operativo della variante GitHub Pages + backend VPS.
+- `docs/patch.md` aggiornato chiudendo il vecchio blocco HTTPS come stato corrente e segnando completati test end-to-end e documentazione finale.
+- `docs/backend_https_caddy.md` riallineato al fatto che Caddy e HTTPS fanno parte del flusso reale e non solo di una fase preparatoria.
+- `docs/backend_service_systemd.md` aggiornato per trattare `8015` come porta interna e `443` come endpoint pubblico consigliato.
+- `docs/backend_hostname_duckdns.md` aggiornato per usare DuckDNS come base DNS della soluzione finale HTTPS e non come endpoint HTTP finale.
+- `docs/backend_management.md` rifinito con riferimenti piu' coerenti al frontend pubblico attuale.
+
+## 2026-04-05 - Guida gestione backend
+
+### Aggiunto
+
+- `docs/backend_management.md` con la guida pratica per gestione quotidiana del backend su VPS: stato servizi, restart, log `journalctl`, verifica HTTPS, controllo SQLite e diagnosi rapida dei problemi.
+
 ## 2026-04-05 - Scaffolding repository GitHub
 
 ### Aggiunto

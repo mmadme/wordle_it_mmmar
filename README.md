@@ -1,6 +1,6 @@
 # Woordle New GitHub
 
-Versione di lavoro di `Parole Infinito` preparata per una futura architettura ibrida:
+Versione di lavoro di `Parole Infinito` preparata per l'architettura ibrida del progetto:
 
 - frontend statico pubblicabile su GitHub Pages
 - backend Python + SQLite mantenuto sulla VPS Ubuntu
@@ -17,6 +17,10 @@ La variante `woordle_new_github` e' gia' pronta su questi punti:
 - deploy persistente del backend con `systemd`
 - reverse proxy HTTPS tramite Caddy
 - pacchetto statico esportabile per GitHub Pages con `build_github_pages.py`
+- configurazione frontend separata in `api-config.js`
+- daily sincronizzata tramite backend con timezone ufficiale `Europe/Rome`
+
+Nel flusso attuale la repo rappresenta la variante GitHub Pages + backend VPS gia' allineata a un deploy reale.
 
 I dettagli operativi del backend reale non sono riportati nel README pubblico.
 
@@ -81,7 +85,7 @@ Workflow:
 
 - `.github/workflows/github-pages.yml`
 
-Per attivarlo su GitHub:
+Per una nuova copia del progetto o per rifare il setup da zero:
 
 1. crea la repository remota
 2. fai push del branch `main`
@@ -96,12 +100,12 @@ GitHub Docs ufficiale:
 
 ## CORS e backend remoto
 
-Quando il frontend sara' pubblicato su GitHub Pages, conviene restringere le origini consentite nel backend invece di lasciare `*`.
+Dato che il frontend e' pensato per girare su GitHub Pages, conviene restringere le origini consentite nel backend invece di lasciare `*`.
 
 Esempio:
 
 ```bash
-BACKEND_ALLOW_ORIGINS=https://<tuoutente>.github.io
+BACKEND_ALLOW_ORIGINS=https://<frontend-domain>
 ```
 
 Dettagli:
@@ -131,10 +135,6 @@ Per questo i file locali sensibili e generati sono esclusi tramite `.gitignore`.
 
 ## Nota importante
 
-Questa e' una repo di migrazione e consolidamento.
+Questa repo resta separata da `woordle_new` per evitare regressioni sul ramo storico del progetto.
 
-La versione attualmente in produzione resta separata in `woordle_new` finche' non completiamo:
-
-- test end-to-end reali con GitHub Pages
-- validazione CORS finale
-- decisione di rollout
+La variante GitHub Pages + backend remoto risulta ormai il riferimento operativo di questa copia; il lavoro residuo riguarda soprattutto manutenzione, monitoraggio e l'eventuale decisione di convergere o meno sul progetto principale.
