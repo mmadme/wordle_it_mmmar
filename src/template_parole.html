@@ -256,6 +256,30 @@ header {
     font-size: 11px;
   }
 }
+
+/* ── SELETTORE DIFFICOLTÀ INFINITA ── */
+header { flex-wrap: wrap; row-gap: 6px; }
+#diff-selector {
+  width: 100%;
+  display: flex;
+  gap: 4px;
+}
+#diff-selector.hidden { display: none; }
+.diff-btn {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  border-radius: 8px;
+  height: 30px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.diff-btn:hover { border-color: var(--accent); color: var(--white); }
+.diff-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 </style>
 </head>
 <body>
@@ -266,6 +290,11 @@ header {
     <button class="hbtn" id="btn-mode" title="Modalità giornaliera">24H</button>
     <button class="hbtn" id="btn-stats" title="Statistiche">📊</button>
     <button class="hbtn" id="btn-help"  title="Come si gioca">❓</button>
+  </div>
+  <div id="diff-selector" class="hidden">
+    <button class="diff-btn" data-diff="facile">Facile</button>
+    <button class="diff-btn active" data-diff="media">Media</button>
+    <button class="diff-btn" data-diff="difficile">Difficile</button>
   </div>
 </header>
 
@@ -1538,6 +1567,7 @@ const INFINITE_STATE_KEY = "parole_inf_state";
 const DAILY_STATE_KEY    = "parole_daily_state";
 const DAILY_EPOCH        = "2026-01-01";
 const CLIENT_KEY         = "parole_client_id";
+const DIFF_KEY           = "infinita_difficolta";
 
 let numeroPartita = 1;
 let modalita = "giornaliera";
@@ -1548,6 +1578,7 @@ let modalitaDopoChiusura = null;
 let dailyConfig = null;
 let dailyConfigPromise = null;
 let appReady = false;
+let difficoltaInfinita = "media";
 const DAILY_FETCH_TIMEOUT_MS = 4000;
 
 // ── Statistiche (localStorage) ──
@@ -1580,6 +1611,22 @@ function getModalitaSalvata() {
   } catch {
     return "giornaliera";
   }
+}
+function getDifficoltaSalvata() {
+  try {
+    const saved = localStorage.getItem(DIFF_KEY);
+    return ["facile", "media", "difficile"].includes(saved) ? saved : "media";
+  } catch {
+    return "media";
+  }
+}
+function saveDifficolta(d) {
+  try { localStorage.setItem(DIFF_KEY, d); } catch {}
+}
+function aggiornaDiffSelector() {
+  document.querySelectorAll(".diff-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.diff === difficoltaInfinita);
+  });
 }
 function nuovoId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -1727,7 +1774,13 @@ function scegliPoolPesato(seed) {
 }
 function scegliSoluzioneCasuale() {
   const roll = Math.floor(Math.random() * 100);
-  const pool = _scegli5(PESI_CUM_INFINITA, roll);
+  const pesiMap = {
+    "facile":    PESI_CUM_INFINITA_FACILE,
+    "media":     PESI_CUM_INFINITA_MEDIA,
+    "difficile": PESI_CUM_INFINITA_DIFFICILE
+  };
+  const pesiCum = pesiMap[difficoltaInfinita] ?? PESI_CUM_INFINITA_MEDIA;
+  const pool = _scegli5(pesiCum, roll);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 function parolaGiornalieraDaNumero(n) {
@@ -1790,16 +1843,20 @@ function aggiornaHeader() {
   const badge = document.getElementById("mode-badge");
   const btnMode = document.getElementById("btn-mode");
   const btnNuova = document.getElementById("btn-nuova");
+  const diffSel = document.getElementById("diff-selector");
   if (modalita === "giornaliera") {
     badge.textContent = "24H";
     btnMode.textContent = "∞";
     btnMode.title = "Modalità infinita";
     btnNuova.textContent = "▶ GIOCA INFINITA";
+    diffSel.classList.add("hidden");
   } else {
     badge.textContent = "∞";
     btnMode.textContent = "24H";
     btnMode.title = "Modalità giornaliera";
     btnNuova.textContent = "▶ NUOVA PARTITA";
+    diffSel.classList.remove("hidden");
+    aggiornaDiffSelector();
   }
 }
 function avviaPartitaInfinita(forceNew = false) {
@@ -2056,7 +2113,7 @@ function balza(r, cb) {
 //  FINE PARTITA
 // ══════════════════════════════════════════════════════════
 function renderFinePartita(vinta, numRighe) {
-  const titoli = ["Perfetto! ðŸŽ‰","Ottima! ðŸŒŸ","Brava! ðŸ‘","Bene! ðŸ˜Š","Ci siamo quasi ðŸ˜…","Per un pelo! ðŸ˜¤"];
+  const titoli = ["Incredibile!","Eccellente!","Ottimo!","Bene!","Per un pelo!","Ce l'hai fatta!"];
   document.getElementById("end-titolo").textContent = vinta
     ? (titoli[numRighe - 1] || "Vinta!") : "Fine partita ðŸ˜”";
   document.getElementById("end-parola").textContent = parola.toUpperCase();
@@ -2081,12 +2138,12 @@ function renderFinePartita(vinta, numRighe) {
 // Override pulito per evitare problemi di encoding nel popup finale.
 function renderFinePartita(vinta, numRighe) {
   const titoli = [
-    "Perfetto! \u{1F389}",
-    "Ottima! \u{1F31F}",
-    "Brava! \u{1F44F}",
-    "Bene! \u{1F60A}",
-    "Ci siamo quasi \u{1F605}",
-    "Per un pelo! \u{1F624}"
+    "Incredibile!",
+    "Eccellente!",
+    "Ottimo!",
+    "Bene!",
+    "Per un pelo!",
+    "Ce l\u0027hai fatta!"
   ];
   document.getElementById("end-titolo").textContent = vinta
     ? (titoli[numRighe - 1] || "Vinta!")
@@ -2314,6 +2371,13 @@ document.addEventListener("keydown", e => {
 document.getElementById("btn-stats").addEventListener("click", mostraStats);
 document.getElementById("btn-mode").addEventListener("click", () =>
   appReady && void impostaModalita(modalita === "giornaliera" ? "infinita" : "giornaliera"));
+document.querySelectorAll(".diff-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    difficoltaInfinita = btn.dataset.diff;
+    saveDifficolta(difficoltaInfinita);
+    aggiornaDiffSelector();
+  });
+});
 document.getElementById("btn-help").addEventListener("click",  () => document.getElementById("m-help").classList.add("open"));
 document.getElementById("btn-share").addEventListener("click", condividiRisultato);
 document.getElementById("btn-nuova").addEventListener("click",  nuovaPartita);
@@ -2327,6 +2391,7 @@ document.querySelectorAll(".overlay").forEach(ov =>
 async function initApp() {
   clientId = getClientId();
   numeroPartita = getNumeroPartita();
+  difficoltaInfinita = getDifficoltaSalvata();
   costruisciGriglia();
   costruisciTastiera();
   await impostaModalita(modalitaIniziale());

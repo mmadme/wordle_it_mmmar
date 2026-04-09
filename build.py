@@ -39,11 +39,15 @@ SOLUZIONI_LIVELLO_ALTO={"prete","punge","serpe","greco","omega","colgo","baffi",
 SOLUZIONI_AGGIUNTE_MANUALI={"froci","negra"}
 
 # Pesi per ogni livello (devono sommare 100)
-# Infinita:    bassissima 30% | bassa 25% | media 25% | alta 15% | altissima  5%
-# Giornaliera: bassissima 20% | bassa 25% | media 30% | alta 20% | altissima  5%
-PESI_INFINITA = [30, 25, 25, 15,  5]
-PESI_DAILY    = [20, 25, 30, 20,  5]
-LIVELLI       = ["bassissima", "bassa", "media", "alta", "altissima"]
+# Infinita facile:    bassissima 45% | bassa 30% | media 15% | alta  8% | altissima  2%
+# Infinita media:     bassissima 25% | bassa 25% | media 25% | alta 18% | altissima  7%
+# Infinita difficile: bassissima  5% | bassa 10% | media 20% | alta 35% | altissima 30%
+# Giornaliera:        bassissima 10% | bassa 20% | media 35% | alta 25% | altissima 10%
+PESI_INFINITA_FACILE    = [45, 30, 15,  8,  2]
+PESI_INFINITA_MEDIA     = [25, 25, 25, 18,  7]
+PESI_INFINITA_DIFFICILE = [ 5, 10, 20, 35, 30]
+PESI_DAILY              = [10, 20, 35, 25, 10]
+LIVELLI                 = ["bassissima", "bassa", "media", "alta", "altissima"]
 
 
 class Log:
@@ -161,8 +165,10 @@ def classifica_difficolta(words):
       bassissima 0-30% | bassa 30-55% | media 55-80% | alta 80-95% | altissima 95-100%
 
     Pesi estrazione:
-      Infinita:    bassissima 30% | bassa 25% | media 25% | alta 15% | altissima  5%
-      Giornaliera: bassissima 20% | bassa 25% | media 30% | alta 20% | altissima  5%
+      Infinita facile:    bassissima 45% | bassa 30% | media 15% | alta  8% | altissima  2%
+      Infinita media:     bassissima 25% | bassa 25% | media 25% | alta 18% | altissima  7%
+      Infinita difficile: bassissima  5% | bassa 10% | media 20% | alta 35% | altissima 30%
+      Giornaliera:        bassissima 10% | bassa 20% | media 35% | alta 25% | altissima 10%
     """
     if not words:
         return {k:[] for k in LIVELLI}
@@ -202,6 +208,12 @@ def classifica_difficolta(words):
         if word in livello_parola and word not in SOLUZIONI_LIVELLO_ALTISSIMO and word not in SOLUZIONI_LIVELLO_ALTO:
             livello_parola[word]="media"
 
+    # Doppie: livello minimo "alta" (a meno che non siano già altissima)
+    LIVELLI_SOTTO_ALTA = {"bassissima", "bassa", "media"}
+    for word in words:
+        if ha_doppie(word) and livello_parola.get(word) in LIVELLI_SOTTO_ALTA:
+            livello_parola[word] = "alta"
+
     result={k:[] for k in LIVELLI}
     for word,livello in sorted(livello_parola.items()):
         result[livello].append(word)
@@ -221,7 +233,9 @@ def genera_html(soluzioni,tentativi,categorie):
         for p in pesi: s+=p; out.append(s)
         return out
 
-    cum_inf=cum(PESI_INFINITA)
+    cum_facile=cum(PESI_INFINITA_FACILE)
+    cum_media=cum(PESI_INFINITA_MEDIA)
+    cum_difficile=cum(PESI_INFINITA_DIFFICILE)
     cum_daily=cum(PESI_DAILY)
 
     block=(
@@ -232,9 +246,11 @@ def genera_html(soluzioni,tentativi,categorie):
         f"const SOLUZIONI_MEDIA      = {lista_js(categorie['media'])};\n"
         f"const SOLUZIONI_ALTA       = {lista_js(categorie['alta'])};\n"
         f"const SOLUZIONI_ALTISSIMA  = {lista_js(categorie['altissima'])};\n"
-        f"// Pesi cumulativi: infinita {cum_inf}  daily {cum_daily}\n"
-        f"const PESI_CUM_INFINITA = {cum_inf};\n"
-        f"const PESI_CUM_DAILY    = {cum_daily};\n"
+        f"// Pesi cumulativi: facile {cum_facile}  media {cum_media}  difficile {cum_difficile}  daily {cum_daily}\n"
+        f"const PESI_CUM_INFINITA_FACILE    = {cum_facile};\n"
+        f"const PESI_CUM_INFINITA_MEDIA     = {cum_media};\n"
+        f"const PESI_CUM_INFINITA_DIFFICILE = {cum_difficile};\n"
+        f"const PESI_CUM_DAILY              = {cum_daily};\n"
         f"const _TENTATIVI_EXTRA = {lista_js(tentativi)};\n"
         f"// --VOCAB-END--"
     )
@@ -297,8 +313,10 @@ def main():
     categorie=classifica_difficolta(sol)
     for livello in LIVELLI:
         log.ok(f"{livello}: {len(categorie[livello]):,} parole")
-    log.info(f"Pesi infinita: {PESI_INFINITA}")
-    log.info(f"Pesi daily:    {PESI_DAILY}")
+    log.info(f"Pesi infinita facile:    {PESI_INFINITA_FACILE}")
+    log.info(f"Pesi infinita media:     {PESI_INFINITA_MEDIA}")
+    log.info(f"Pesi infinita difficile: {PESI_INFINITA_DIFFICILE}")
+    log.info(f"Pesi daily:              {PESI_DAILY}")
 
     log.section("Scrematura tentativi")
     ten_fil,ten_rim=screma_tentativi(ten_raw)

@@ -1,140 +1,238 @@
-# Woordle New GitHub
+# Parole Infinito — woordle_new_github
 
-Versione di lavoro di `Parole Infinito` preparata per l'architettura ibrida del progetto:
+Clone italiano di Wordle con architettura ibrida: frontend statico su GitHub Pages e backend Python + SQLite su VPS Ubuntu.
 
-- frontend statico pubblicabile su GitHub Pages
-- backend Python + SQLite mantenuto sulla VPS Ubuntu
-- backend remoto configurabile senza hardcode nel frontend
+## Cosa fa il gioco
 
-Questa cartella e' separata dalla versione attiva `woordle_new` per evitare regressioni durante la migrazione.
+Parole Infinito è un gioco di indovinare parole italiane di 5 lettere in 6 tentativi, ispirato a Wordle.
 
-## Stato attuale
+Due modalità:
 
-La variante `woordle_new_github` e' gia' pronta su questi punti:
+- **Infinita (∞)**: partite illimitate con parola casuale estratta in modo pesato per difficoltà
+- **Giornaliera (24H)**: una sola parola al giorno, uguale per tutti, determinata dal backend con timezone `Europe/Rome`
 
-- build locale del gioco con `build.py`
-- backend remoto stabile con `serve_local.py`
-- deploy persistente del backend con `systemd`
-- reverse proxy HTTPS tramite Caddy
-- pacchetto statico esportabile per GitHub Pages con `build_github_pages.py`
-- configurazione frontend separata in `api-config.js`
-- daily sincronizzata tramite backend con timezone ufficiale `Europe/Rome`
+Feedback per ogni tentativo:
+- Verde: lettera corretta nella posizione giusta
+- Giallo: lettera presente ma nella posizione sbagliata
+- Grigio: lettera non presente nella parola
 
-Nel flusso attuale la repo rappresenta la variante GitHub Pages + backend VPS gia' allineata a un deploy reale.
+Il gioco funziona interamente nel browser. Il backend è opzionale per la modalità infinita, ma necessario per la daily sincronizzata e per il logging playtest.
 
-I dettagli operativi del backend reale non sono riportati nel README pubblico.
+## Architettura
+
+```
+GitHub Pages (frontend)     https://<user>.github.io/<repo>/
+        ↓ CORS
+Caddy (reverse proxy)       https://sborraparle.duckdns.org  (443)
+        ↓ loopback
+Backend Python              http://127.0.0.1:8015
+        ↓
+SQLite                      data/playtest.db
+```
+
+Il frontend legge l'URL del backend da `api-config.js`, generato durante la build. Non c'è nessun URL hardcoded nell'HTML.
 
 ## Struttura del progetto
 
-- `src/template_parole.html`: template sorgente del gioco
-- `build.py`: genera `dist/`
-- `serve_local.py`: server HTTP/API con logging su SQLite
-- `report_playtest.py`: genera report dal database playtest
-- `build_github_pages.py`: esporta il pacchetto statico in `github_pages/`
-- `run_backend_service.sh`: wrapper di avvio per il servizio backend
-- `deploy/systemd/`: unit file `systemd`
-- `deploy/caddy/Caddyfile.example`: reverse proxy HTTPS
-- `duckdns/`: aggiornamento hostname DuckDNS
-- `docs/`: documentazione tecnica e piano patch
+```
+src/
+  template_parole.html      template sorgente del gioco (2300+ righe)
 
-## Avvio locale rapido
+dist/                       output del build (non versionato)
+  parole-infinito.html      gioco finale giocabile
+  parole_soluzioni.txt      1319 parole soluzione
+  parole_tentativi.txt      7802 parole accettate come tentativo
+  api-config.js             URL backend per l'ambiente locale
 
-Requisiti:
+github_pages/               pacchetto statico per GitHub Pages (non versionato)
+  index.html
+  parole-infinito.html
+  404.html
+  api-config.js             URL backend reale (iniettato dalla secret CI)
+  .nojekyll
 
-- Ubuntu o Linux compatibile
-- Python 3
+data/
+  playtest.db               database SQLite eventi (non versionato)
+  playtest_events.csv       export CSV (non versionato)
 
-Build:
+deploy/
+  systemd/                  unit file systemd per il backend
+  caddy/Caddyfile.example   reverse proxy HTTPS con Caddy
+  backend.env.example       variabili d'ambiente backend
+  backend-test.env.example  variabili d'ambiente ambiente di test
+
+duckdns/
+  update_duckdns.sh         aggiornamento IP su DuckDNS (cron)
+  duckdns.env.example       template configurazione
+
+.github/workflows/
+  github-pages.yml          CI/CD: build e deploy automatico su GitHub Pages
+
+docs/
+  CHANGELOG.md              storia delle modifiche
+  patch.md                  roadmap e diario delle fasi di lavoro
+  playtest_report.md        report analitico del playtest
+  backend_service_systemd.md  guida systemd
+  backend_https_caddy.md    guida HTTPS Caddy
+  backend_hostname_duckdns.md  guida DuckDNS
+  backend_management.md     guida operativa quotidiana
+  github_repo_setup.md      setup iniziale repo GitHub
+  build_log.md              output dell'ultima build
+  build_history.md          storico build
+  stato_progetto.md         fotografia iniziale del progetto
+
+build.py                    generatore principale: fetch dizionari, filtraggio, classificazione difficoltà, build HTML
+build_github_pages.py       esporta il pacchetto GitHub Pages da dist/
+serve_local.py              backend HTTP + API SQLite
+report_playtest.py          genera report CSV e markdown dal database
+run_backend_service.sh      wrapper di avvio per systemd
+serve_hybrid_local.sh       simula architettura ibrida in locale (frontend 4173, backend 8014)
+share_public.sh             avvio rapido backend su VPS
+```
+
+## Vocabolario
+
+Il vocabolario viene generato da `build.py` a partire da sorgenti esterne (dizionari wordle-it su GitHub) con un pipeline di filtraggio e classificazione:
+
+**Filtraggio soluzioni:**
+- solo parole di 5 lettere con almeno una vocale
+- rimosse forme verbali troppo specifiche (passato remoto in -ai/-ii, congiuntivi rari)
+- rimossi cluster di parole troppo simili (famiglie con 6+ varianti)
+- rimossi forestierismi non integrati
+- alcune parole aggiunte manualmente (`froci`, `negra`)
+
+**Classificazione difficoltà** (5 livelli):
+
+| Livello | N. parole | Criteri |
+|---------|-----------|---------|
+| Bassissima | 405 | parole molto comuni, bassa rarità lettere |
+| Bassa | 320 | parole comuni |
+| Media | 322 | rarità media |
+| Alta | 197 | lettere rare, doppie, pochi caratteri unici |
+| Altissima | 75 | rarità estrema + sovrascrittura manuale |
+
+**Pesi estrazione:**
+
+| Modalità | Bassissima | Bassa | Media | Alta | Altissima |
+|----------|-----------|-------|-------|------|-----------|
+| Infinita | 30% | 25% | 25% | 15% | 5% |
+| Giornaliera | 20% | 25% | 30% | 20% | 5% |
+
+**Risultato finale:** 1319 soluzioni, 7802 tentativi accettati.
+
+## Avvio locale
+
+Requisiti: Python 3, connessione internet (per il fetch dei dizionari al primo build).
 
 ```bash
+# Build del gioco
 python3 build.py
-```
 
-Avvio locale:
-
-```bash
+# Avvio backend locale (serve dist/ + API SQLite)
 python3 serve_local.py --host 127.0.0.1 --port 8015 --open
+
+# Simulazione architettura ibrida (frontend su 4173, backend su 8014)
+bash serve_hybrid_local.sh
 ```
 
-## Generare il frontend per GitHub Pages
-
-Il frontend statico viene esportato in `github_pages/`.
-
-Comando consigliato:
+## Build e deploy su GitHub Pages
 
 ```bash
+# Genera il pacchetto statico con URL backend esplicito
 python3 build_github_pages.py --api-base https://<backend-domain>
 ```
 
-Output principale:
+Il workflow `.github/workflows/github-pages.yml` automatizza questo passaggio a ogni push su `main`.
+Legge l'URL del backend dalla secret `PAGES_API_BASE_URL` del repository.
 
-- `github_pages/index.html`
-- `github_pages/parole-infinito.html`
-- `github_pages/api-config.js`
+Setup iniziale:
 
-## Deploy su GitHub Pages
+1. Crea la repository su GitHub e fai push di `main`
+2. `Settings` → `Secrets and variables` → `Actions` → crea `PAGES_API_BASE_URL`
+3. `Settings` → `Pages` → `Source`: `GitHub Actions`
 
-La repo include un workflow GitHub Actions che:
+Guida completa: `docs/github_repo_setup.md`
 
-- esegue la build del frontend
-- genera `github_pages/`
-- pubblica automaticamente il sito su GitHub Pages
-- legge l'URL backend da una secret del repository
+## Backend su VPS
 
-Workflow:
+Il backend gira come servizio systemd dietro Caddy con HTTPS automatico.
 
-- `.github/workflows/github-pages.yml`
+Stack:
 
-Per una nuova copia del progetto o per rifare il setup da zero:
+- `serve_local.py` in ascolto su `127.0.0.1:8015`
+- Caddy in reverse proxy su `443` con certificato Let's Encrypt
+- DuckDNS per hostname stabile gratuito
 
-1. crea la repository remota
-2. fai push del branch `main`
-3. in GitHub vai su `Settings` -> `Secrets and variables` -> `Actions` -> `Secrets`
-4. crea `PAGES_API_BASE_URL` con il valore del backend reale
-5. in GitHub vai su `Settings` -> `Pages`
-6. imposta `Source` su `GitHub Actions`
+Endpoint API:
 
-GitHub Docs ufficiale:
+- `GET /api/daily` → metadati daily (challenge_id, daily_no, resets_at, timezone)
+- `POST /api/attempt` → registra un evento di gioco nel database SQLite
 
-- https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
+Variabili d'ambiente principali (file `.env` o `/etc/woordle-backend-test.env`):
 
-## CORS e backend remoto
+```
+BACKEND_HOST=127.0.0.1
+BACKEND_PORT=8015
+BACKEND_ALLOW_ORIGINS=https://<frontend-domain>
+BACKEND_LOG_HTTP=0
+BACKEND_BUILD_ON_START=0
+```
 
-Dato che il frontend e' pensato per girare su GitHub Pages, conviene restringere le origini consentite nel backend invece di lasciare `*`.
+Guide operative:
 
-Esempio:
+- `docs/backend_service_systemd.md`
+- `docs/backend_https_caddy.md`
+- `docs/backend_hostname_duckdns.md`
+- `docs/backend_management.md`
+
+## Report playtest
+
+```bash
+python3 report_playtest.py
+```
+
+Genera `data/playtest_events.csv` e aggiorna `docs/playtest_report.md`.
+
+Dati attuali (2026-04-09):
+
+- 555 eventi registrati
+- 85 partite concluse, 79 vinte (92.9% win rate)
+- 9 IP distinti
+- media tentativi nelle vittorie: 4.15
+- apertura più usata: `sedia` (14 volte)
+
+## CORS
+
+Con frontend su GitHub Pages (HTTPS) e backend su dominio separato, il CORS è obbligatorio.
 
 ```bash
 BACKEND_ALLOW_ORIGINS=https://<frontend-domain>
 ```
 
-Dettagli:
-
-- `docs/backend_service_systemd.md`
-- `docs/backend_https_caddy.md`
+Il backend risponde alle preflight `OPTIONS` e aggiunge gli header `Access-Control-Allow-*` automaticamente.
 
 ## File non versionati
 
-Questa repo non deve includere:
+`.gitignore` esclude:
 
-- database playtest reali
-- log runtime
-- file con token o segreti
-- URL backend reali dove non sono strettamente necessari
+- `data/playtest.db` e `data/*.csv` (database reali)
+- `data/*.log` (log runtime)
+- `duckdns/duckdns.env` (token DuckDNS)
+- `.env` e `.env.*` (configurazioni locali)
+- `dist/` e `github_pages/` (artefatti di build)
+- `__pycache__/`
 
-Per questo i file locali sensibili e generati sono esclusi tramite `.gitignore`.
+## Documentazione
 
-## Documentazione utile
-
-- [Patch Plan](docs/patch.md)
-- [Backend DuckDNS](docs/backend_hostname_duckdns.md)
-- [Backend systemd](docs/backend_service_systemd.md)
-- [Backend HTTPS con Caddy](docs/backend_https_caddy.md)
-- [Setup repo GitHub](docs/github_repo_setup.md)
 - [Changelog](docs/CHANGELOG.md)
+- [Patch Plan](docs/patch.md)
+- [Report Playtest](docs/playtest_report.md)
+- [Backend systemd](docs/backend_service_systemd.md)
+- [Backend HTTPS Caddy](docs/backend_https_caddy.md)
+- [Backend DuckDNS](docs/backend_hostname_duckdns.md)
+- [Gestione operativa backend](docs/backend_management.md)
+- [Setup repo GitHub](docs/github_repo_setup.md)
 
-## Nota importante
+## Nota sulla struttura del repo
 
-Questa repo resta separata da `woordle_new` per evitare regressioni sul ramo storico del progetto.
-
-La variante GitHub Pages + backend remoto risulta ormai il riferimento operativo di questa copia; il lavoro residuo riguarda soprattutto manutenzione, monitoraggio e l'eventuale decisione di convergere o meno sul progetto principale.
+Questa cartella (`woordle_new_github`) è separata da `woordle_new` per evitare regressioni durante la migrazione all'architettura ibrida. Il lavoro sulla variante GitHub Pages + backend VPS si svolge interamente qui.
