@@ -258,6 +258,63 @@ Tutta la documentazione tecnica (`patch.md`, `backend_https_caddy.md`, `backend_
 
 ---
 
+### 2026-04-09 — Selettore difficoltà, pesi a 3 livelli, regola doppie, messaggi vittoria
+
+#### Modifica 1 — Regola doppie: livello minimo "alta"
+
+In `classifica_difficolta` aggiunta una regola finale: ogni parola con lettere doppie che era classificata `bassissima`, `bassa` o `media` viene promossa ad `alta`. La regola si applica dopo tutti gli override manuali, quindi `altissima` rimane invariata.
+
+Effetto: la distribuzione livelli si è spostata notevolmente verso `alta` (da ~197 a 375 parole), riducendo `bassissima` (da ~405 a 359), `bassa` (da ~320 a 267) e `media` (da ~322 a 243). Il totale rimane 1319.
+
+Motivazione: le doppie sono punitive in Wordle (si può sprecare un tentativo a indovinare la posizione della lettera ripetuta), quindi è corretto che non appaiano come parole "facili" in modalità difficile.
+
+#### Modifica 2 — Tre set di pesi per la modalità infinita
+
+`PESI_INFINITA` rimosso, sostituito da tre varianti selezionabili:
+
+| Set | Bassissima | Bassa | Media | Alta | Altissima |
+|-----|-----------|-------|-------|------|-----------|
+| Facile | 45% | 30% | 15% | 8% | 2% |
+| Media | 25% | 25% | 25% | 18% | 7% |
+| Difficile | 5% | 10% | 20% | 35% | 30% |
+| Daily | 10% | 20% | 35% | 25% | 10% |
+
+I pesi daily sono stati aggiornati per favorire parole medie e alte (la daily dovrebbe essere una sfida condivisa più bilanciata verso il centro-alto della difficoltà).
+
+Il blocco JS generato nella build ora include `PESI_CUM_INFINITA_FACILE`, `PESI_CUM_INFINITA_MEDIA`, `PESI_CUM_INFINITA_DIFFICILE` al posto del vecchio `PESI_CUM_INFINITA`.
+
+#### Modifica 3 — Selettore difficoltà nell'header
+
+Aggiunto un gruppo di tre pulsanti `Facile | Media | Difficile` nell'header, visibile **solo** in modalità infinita (nascosto in 24H).
+
+Implementazione:
+- HTML: `<div id="diff-selector">` con tre `.diff-btn` dentro l'`<header>`
+- CSS: `header { flex-wrap: wrap; }` per permettere il secondo rigo su schermi piccoli; `#diff-selector { width: 100%; }` per occupare tutta la larghezza quando visibile; `.diff-btn.active` con sfondo accent per evidenziare la selezione
+- JS: costante `DIFF_KEY = "infinita_difficolta"`, variabile `let difficoltaInfinita = "media"`, funzioni `getDifficoltaSalvata()` / `saveDifficolta()` / `aggiornaDiffSelector()`
+- La selezione è persistente via `localStorage` con default `"media"`
+- Cambiare difficoltà non riavvia la partita in corso (ha effetto dalla partita successiva)
+- `aggiornaHeader()` gestisce show/hide del selettore e aggiornamento del pulsante attivo
+- `scegliSoluzioneCasuale()` usa `pesiMap[difficoltaInfinita]` per selezionare il set di pesi corretto
+
+Testato: su viewport 375px (iPhone SE) il selettore appare come secondo rigo sotto logo+pulsanti, senza overflow.
+
+#### Modifica 4 — Messaggi vittoria neutri
+
+Sostituiti i messaggi di vittoria nella funzione `renderFinePartita` con testi neutri senza genere e senza emoji:
+
+| Tentativo | Prima | Dopo |
+|-----------|-------|------|
+| 1 | Perfetto! 🎉 | Incredibile! |
+| 2 | Ottima! 🌟 | Eccellente! |
+| 3 | Brava! 👏 | Ottimo! |
+| 4 | Bene! 😊 | Bene! |
+| 5 | Ci siamo quasi 😅 | Per un pelo! |
+| 6 | Per un pelo! 😤 | Ce l'hai fatta! |
+
+Il messaggio di sconfitta "Fine partita 😔" non è stato modificato.
+
+---
+
 ## Stato operativo attuale (2026-04-09)
 
 | Componente | Stato |
