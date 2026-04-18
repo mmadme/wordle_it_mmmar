@@ -7,6 +7,8 @@ from pathlib import Path
 BASE_DIR=Path(__file__).resolve().parent
 DIST_DIR=BASE_DIR/"dist"
 DOCS_DIR=BASE_DIR/"docs"
+VOCAB_OVERRIDE_FILE=BASE_DIR/"data"/"vocabolario.json"
+FILE_DEF=BASE_DIR/"data"/"definizioni.json"
 FILE_HTML=DIST_DIR/"parole-infinito.html"
 FILE_API_CONFIG=DIST_DIR/"api-config.js"
 FILE_SOL=DIST_DIR/"parole_soluzioni.txt"
@@ -23,20 +25,13 @@ FORESTIERISMI_COMUNI={"album","audio","bazar","bidet","clown","curry","extra","f
 PRESTITI_STABILI={"alias","focus","ictus","lapis","rebus","ribes","silos","virus"}
 FORESTIERISMI_DA_ESCLUDERE={"ebook","jeans","shake","share","shari","sharo","shina","shire","skate","smoke","spike","texta","texte","texti","texto","trans","white"}
 VERBI_PRESENTE_AMMESSI={"colgo","conto","copri","entra","fanno","giace","gioca","guida","hanno","invio","opera","pensa","pesco","pongo","posso","punge","sanno","sorge","tengo","tieni","trova","usano","usare","valgo","vanno","venga","vendo","vieni","vinco","vuole"}
-
-SOLUZIONI_SEMPRE_COMUNI={"acqua","aiuto","amore","amici","banca","barca","carne","carta","causa","cielo","cuore","danno","donna","ferro","festa","fiore","forza","gatto","gioco","hotel","latte","madre","metro","mondo","notte","padre","paese","parte","porta","prato","regno","ruota","sasso","scena","sedia","serra","sogno","suono","tempo","terra","testa","vento"}
-
-# Da rimuovere completamente dalle soluzioni (restano nei tentativi)
-SOLUZIONI_DA_RIMUOVERE={"bidet","biada","bitta","cruna","sport","torba","alice","nuche","avolo","oneri","acume","bulbo","pepsi"}
-
-# Override forzato al livello altissimo
-SOLUZIONI_LIVELLO_ALTISSIMO={"amala","gamma","orgia","tesse","tonno","adula","beffa","lutto","vinti","imita","grata"}
-
-# Override forzato al livello alto
-SOLUZIONI_LIVELLO_ALTO={"prete","punge","serpe","greco","omega","colgo","baffi","rossa","folle","motto"}
-
-# Aggiunte manuali: inserite nelle soluzioni a livello medio
-SOLUZIONI_AGGIUNTE_MANUALI={"froci","negra"}
+SOLUZIONI_SEMPRE_COMUNI=set()
+SOLUZIONI_DA_RIMUOVERE=set()
+SOLUZIONI_LIVELLO_ALTISSIMO=set()
+SOLUZIONI_LIVELLO_ALTO=set()
+SOLUZIONI_LIVELLO_MEDIO=set()
+SOLUZIONI_LIVELLO_BASSO=set()
+SOLUZIONI_AGGIUNTE_MANUALI=set()
 
 # Pesi per ogni livello (devono sommare 100)
 # Infinita facile:    bassissima 45% | bassa 30% | media 15% | alta  8% | altissima  2%
@@ -72,6 +67,25 @@ class Log:
             self.history.write_text("# Storico Build - Parole Infinito\n\n",encoding="utf-8")
         with self.history.open("a",encoding="utf-8") as fh:
             fh.write(summary.rstrip()+"\n\n")
+
+def carica_vocabolario_override(path):
+    if not path.exists():
+        print(f"ATTENZIONE: {path} non trovato, uso override vuoti")
+        return {
+            "sempre_comuni": [],
+            "da_rimuovere": [],
+            "aggiunte": [],
+            "override_livello": {}
+        }
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+def carica_definizioni(path):
+    if not path.exists():
+        print(f"ATTENZIONE: {path} non trovato, definizioni vuote")
+        return {}
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
 
 def ensure_dirs():
     DIST_DIR.mkdir(parents=True,exist_ok=True)
@@ -202,10 +216,21 @@ def classifica_difficolta(words):
             livello_parola[word]="altissima"
         elif word in SOLUZIONI_LIVELLO_ALTO:
             livello_parola[word]="alta"
+        elif word in SOLUZIONI_LIVELLO_MEDIO:
+            livello_parola[word]="media"
+        elif word in SOLUZIONI_LIVELLO_BASSO:
+            livello_parola[word]="bassa"
 
-    # Aggiunte manuali → media (se non già assegnate da override)
+    # Aggiunte manuali → media (se non già assegnate da override o sempre_comuni)
     for word in SOLUZIONI_AGGIUNTE_MANUALI:
-        if word in livello_parola and word not in SOLUZIONI_LIVELLO_ALTISSIMO and word not in SOLUZIONI_LIVELLO_ALTO:
+        if (
+            word in livello_parola
+            and word not in SOLUZIONI_SEMPRE_COMUNI
+            and word not in SOLUZIONI_LIVELLO_ALTISSIMO
+            and word not in SOLUZIONI_LIVELLO_ALTO
+            and word not in SOLUZIONI_LIVELLO_MEDIO
+            and word not in SOLUZIONI_LIVELLO_BASSO
+        ):
             livello_parola[word]="media"
 
     # Doppie: livello minimo "alta" (a meno che non siano già altissima)
@@ -228,6 +253,9 @@ def lista_js(words,per_riga=10):
     return "[\n"+",\n".join(rows)+"\n  ]"
 
 def genera_html(soluzioni,tentativi,categorie):
+    defs=carica_definizioni(FILE_DEF)
+    defs_js=json.dumps(defs, ensure_ascii=False)
+
     def cum(pesi):
         out=[]; s=0
         for p in pesi: s+=p; out.append(s)
@@ -252,6 +280,7 @@ def genera_html(soluzioni,tentativi,categorie):
         f"const PESI_CUM_INFINITA_DIFFICILE = {cum_difficile};\n"
         f"const PESI_CUM_DAILY              = {cum_daily};\n"
         f"const _TENTATIVI_EXTRA = {lista_js(tentativi)};\n"
+        f"const DEFINIZIONI = {defs_js};\n"
         f"// --VOCAB-END--"
     )
     html=TEMPLATE_HTML.read_text(encoding="utf-8")
@@ -291,6 +320,24 @@ def create_summary(sol,ten_raw,ten_fil,ten,cat):
     )
 
 def main():
+    global SOLUZIONI_SEMPRE_COMUNI
+    global SOLUZIONI_DA_RIMUOVERE
+    global SOLUZIONI_AGGIUNTE_MANUALI
+    global SOLUZIONI_LIVELLO_ALTISSIMO
+    global SOLUZIONI_LIVELLO_ALTO
+    global SOLUZIONI_LIVELLO_MEDIO
+    global SOLUZIONI_LIVELLO_BASSO
+
+    vc=carica_vocabolario_override(VOCAB_OVERRIDE_FILE)
+    ov=vc["override_livello"]
+    SOLUZIONI_SEMPRE_COMUNI=set(vc["sempre_comuni"])
+    SOLUZIONI_DA_RIMUOVERE=set(vc["da_rimuovere"])
+    SOLUZIONI_AGGIUNTE_MANUALI=set(vc["aggiunte"])
+    SOLUZIONI_LIVELLO_ALTISSIMO=set(ov.get("altissima", []))
+    SOLUZIONI_LIVELLO_ALTO=set(ov.get("alta", []))
+    SOLUZIONI_LIVELLO_MEDIO=set(ov.get("media", []))
+    SOLUZIONI_LIVELLO_BASSO=set(ov.get("bassa", []))
+
     ensure_dirs()
     log=Log(FILE_LOG,FILE_HISTORY)
 
@@ -310,6 +357,13 @@ def main():
     [log.info(f"{k}: {', '.join(v)}") for k,v in motivi.items() if v]
 
     log.section("Classificazione difficolta (5 livelli)")
+    log.info(
+        f"Override caricati da {VOCAB_OVERRIDE_FILE.name}: "
+        f"{len(SOLUZIONI_SEMPRE_COMUNI)} comuni, "
+        f"{len(SOLUZIONI_DA_RIMUOVERE)} da_rimuovere, "
+        f"{len(SOLUZIONI_AGGIUNTE_MANUALI)} aggiunte, "
+        f"{sum(len(v) for v in ov.values())} override_livello"
+    )
     categorie=classifica_difficolta(sol)
     for livello in LIVELLI:
         log.ok(f"{livello}: {len(categorie[livello]):,} parole")

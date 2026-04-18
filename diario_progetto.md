@@ -92,6 +92,123 @@ VPS Ubuntu (sempre attivo)
       └── update_duckdns.sh
 ```
 
+### File operativi principali: organizzazione e responsabilita'
+
+Il progetto oggi e' organizzato in pochi file "centrali" che coprono build, runtime, deploy e analisi. La logica non e' sparsa in molti moduli: ogni file ha un ruolo abbastanza netto.
+
+#### Build e vocabolario
+
+- `build.py`
+  - e' il generatore principale del progetto
+  - scarica i dizionari sorgente da `wordle-it`
+  - legge gli override editoriali versionati da `data/vocabolario.json`
+  - legge anche `data/definizioni.json` e lo inietta nel frontend come costante JS `DEFINIZIONI`
+  - filtra `soluzioni` e `tentativi`
+  - classifica le soluzioni in 5 livelli di difficolta'
+  - definisce i pesi percentuali usati da daily e infinita
+  - inietta vocabolario e costanti JS nel template
+  - scrive gli artefatti locali in `dist/` e i log di build in `docs/build_log.md` / `docs/build_history.md`
+
+- `build_github_pages.py`
+  - prende la build locale e la trasforma nel pacchetto statico per GitHub Pages
+  - genera `github_pages/index.html`, `404.html`, `.nojekyll`
+  - scrive `api-config.js` con l'URL del backend passato da CLI o da CI
+  - e' il punto di collegamento tra build locale e deploy statico pubblico
+
+#### Frontend di gioco
+
+- `src/template_parole.html`
+  - e' il file sorgente principale del frontend
+  - contiene struttura HTML, CSS e tutta la logica JS del gioco
+  - gestisce modalita' `giornaliera` e `infinita`
+  - salva stato, statistiche e difficolta' in `localStorage`
+  - applica l'estrazione pesata delle parole a partire dalle costanti generate da `build.py`
+  - interroga `GET /api/daily` per sincronizzare la daily con timezone `Europe/Rome`
+  - include fallback locale se il backend non risponde
+  - oggi include anche il controllo di aggiornamento daily al rientro sulla scheda tramite `visibilitychange` e `focus`, con debounce, per evitare che resti visibile la daily del giorno precedente
+  - nel popup finale puo' mostrare anche una definizione breve della parola soluzione tramite bottone `ⓘ`, se la parola e' presente in `DEFINIZIONI`
+
+#### Backend e logging
+
+- `serve_local.py`
+  - e' il backend operativo unico del progetto
+  - serve i file statici da `dist/`
+  - espone `GET /api/daily` e `POST /api/attempt`
+  - inizializza automaticamente `data/playtest.db`
+  - salva gli eventi di gioco nella tabella `playtest_events`
+  - gestisce CORS per frontend su origine separata
+  - ricostruisce l'IP reale del client quando gira dietro reverse proxy locale
+
+- `run_backend_service.sh`
+  - wrapper di produzione per avviare `serve_local.py`
+  - legge configurazione da file env
+  - puo' opzionalmente lanciare `build.py` prima dell'avvio
+  - e' pensato per essere chiamato da `systemd`
+
+#### Test locale e avvio manuale
+
+- `serve_hybrid_local.sh`
+  - simula in locale l'architettura finale con frontend e backend su origini separate
+  - avvia backend con CORS esplicito
+  - avvia anche un server statico per `dist/`
+  - e' il modo piu' vicino alla produzione per testare il frontend prima del deploy
+
+- `share_public.sh`
+  - script rapido per esporre il backend su host/porta pubblici senza systemd
+  - utile per sessioni di test manuali o debug
+  - salva stdout e stderr in `data/serve_public.*.log`
+
+#### Report e analisi dati
+
+- `report_playtest.py`
+  - e' il report standard del progetto
+  - esporta tutto il DB in `data/playtest_events.csv`
+  - genera un report sintetico in `docs/playtest_report.md`
+  - oggi copre metriche base: eventi, partite concluse, win/loss, guess usati, guess rifiutati, IP osservati, ultimi eventi
+
+- `docs/db_activity_last_2_weeks_2026-04-17.md`
+  - snapshot analitico ad hoc sulle ultime due settimane
+  - aggrega utenti, sessioni, flusso medio e vocaboli provati
+
+- `docs/db_activity_manager_summary_2026-04-17.md`
+  - lettura manageriale corta dello stesso dataset
+  - serve come vista decisionale: top player, retention, confronto daily vs infinita, parole dominanti
+
+#### Deploy e infrastruttura
+
+- `.github/workflows/github-pages.yml`
+  - automatizza il deploy del frontend statico su GitHub Pages
+  - verifica la sintassi Python
+  - invoca `build_github_pages.py`
+  - pubblica `github_pages/` come artefatto Pages
+
+- `duckdns/update_duckdns.sh`
+  - mantiene aggiornato l'hostname DuckDNS del backend VPS
+
+- `deploy/systemd/*`, `deploy/caddy/*`, `deploy/*.env.example`
+  - contengono i template operativi per servizio backend, reverse proxy HTTPS e configurazione ambiente
+
+#### Dati e output runtime
+
+- `dist/`
+  - contiene gli artefatti locali giocabili prodotti dalla build
+  - non e' sorgente: e' output rigenerabile
+
+- `github_pages/`
+  - contiene il pacchetto statico pronto per la pubblicazione su Pages
+
+- `data/`
+  - contiene anche `vocabolario.json`, cioe' le decisioni editoriali versionate sul vocabolario
+  - contiene `definizioni.json`, con le definizioni brevi associate alle parole soluzione
+  - contiene il database SQLite reale, export CSV e log runtime
+  - e' la parte viva del progetto durante il playtest
+
+- `docs/`
+  - raccoglie sia documentazione tecnica sia report generati
+  - oggi e' anche il posto dove si sta accumulando la memoria operativa del progetto
+
+Osservazione pratica: il progetto oggi funziona bene proprio perche' i ruoli sono semplici. `build.py` genera, `template_parole.html` gioca, `serve_local.py` serve e registra, gli script shell avviano, i report leggono il DB.
+
 ---
 
 ## Evoluzione del progetto
@@ -313,32 +430,133 @@ Sostituiti i messaggi di vittoria nella funzione `renderFinePartita` con testi n
 
 Il messaggio di sconfitta "Fine partita 😔" non è stato modificato.
 
+### 2026-04-18 — Aggiornamento daily al rientro sulla scheda e fotografia analytics
+
+#### Modifica frontend — refresh daily al ritorno su tab visibile
+
+Problema emerso su Chrome mobile: lasciando aperta la pagina durante il cambio daily, al rientro restava visibile la parola vecchia finche' l'utente non ricaricava manualmente.
+
+Fix applicato in `src/template_parole.html`:
+- listener su `document.visibilitychange`
+- listener di fallback su `window.focus`
+- funzione dedicata `controllaAggiornamentoDaily()`
+- debounce minimo per evitare doppie chiamate consecutive
+
+Comportamento attuale:
+- il controllo parte solo in modalita' `giornaliera`
+- viene forzato un refresh dei metadati da `GET /api/daily`
+- se `challenge_id` o `day_key` cambiano, il frontend resetta la partita in-place e ricarica la nuova daily
+- se il backend non risponde, resta attivo il fallback locale gia' esistente
+- la modalita' `infinita` non viene toccata
+
+Effetto pratico: la daily ora si aggiorna automaticamente anche quando il giocatore torna alla pagina dopo mezzanotte Europe/Rome.
+
+#### Modifica processo — analisi DB di periodo
+
+Oltre al report standard `report_playtest.py`, sono stati prodotti due report aggiuntivi basati su query mirate sul DB:
+- `docs/db_activity_last_2_weeks_2026-04-17.md`
+- `docs/db_activity_manager_summary_2026-04-17.md`
+
+Questi documenti introducono una vista piu' utile per il prodotto:
+- utenti attivi e ricorrenti
+- sessioni daily vs non-daily
+- flusso medio giornaliero
+- top player
+- parole piu' provate
+- soluzioni viste per modalita'
+
+Il report standard resta utile come export rapido, ma l'analisi decisionale oggi passa anche da questi snapshot periodici.
+
+### 2026-04-18 — Override vocabolario esternalizzati in JSON
+
+Fino a oggi le decisioni editoriali sul vocabolario erano mischiate alla logica di build dentro `build.py`, sotto forma di set Python hardcoded.
+
+Refactor applicato:
+- creato `data/vocabolario.json` come file dati versionato
+- spostati fuori dal codice:
+  - `sempre_comuni`
+  - `da_rimuovere`
+  - `aggiunte`
+  - `override_livello`
+- `build.py` ora carica il file a runtime con una funzione dedicata
+- gli override manuali non coprono piu' solo `alta` e `altissima`, ma anche `media` e `bassa`
+
+Ordine di priorita' attuale nella classificazione:
+1. `sempre_comuni` → `bassissima`
+2. override `altissima`
+3. override `alta`
+4. override `media`
+5. override `bassa`
+6. `aggiunte` → `media` se non gia' assegnate
+7. regola doppie → livello minimo `alta`
+
+Effetto organizzativo:
+- `build.py` torna a contenere soprattutto logica
+- `data/vocabolario.json` diventa il punto unico in cui modificare le scelte editoriali
+- ogni build logga anche quanti override sono stati caricati dal file JSON
+
+Verifica eseguita sulla build corrente:
+- `birba`, `calca`, `pigli` assenti dalle `soluzioni`
+- `troia`, `negro`, `negra`, `negri`, `froci` presenti nelle `soluzioni`
+- `docs/build_log.md` aggiornato con il riepilogo degli override caricati
+
+### 2026-04-18 — Definizioni nel popup di fine partita
+
+E' stato aggiunto un nuovo layer editoriale leggero per dare piu' contesto alla soluzione senza toccare la logica di gioco.
+
+Modifica build:
+- introdotto `data/definizioni.json` come archivio versionato delle definizioni brevi
+- `build.py` ora carica il file e lo serializza nel blocco JS del template come costante `DEFINIZIONI`
+- la build continua a funzionare anche se il file manca, usando un oggetto vuoto
+
+Modifica frontend:
+- nel modal finale `#m-end` la parola soluzione ora sta dentro una riga con bottone `ⓘ`
+- click su `ⓘ` apre o richiude una `def-box` sotto la parola
+- il bottone compare solo se la soluzione corrente ha una definizione disponibile
+- a ogni nuova apertura del popup la definizione riparte chiusa
+
+Effetto pratico: il gioco resta interamente statico lato frontend, ma il popup finale puo' offrire una spiegazione rapida della parola senza chiamate backend aggiuntive.
+
 ---
 
-## Stato operativo attuale (2026-04-09)
+## Stato operativo attuale (2026-04-18)
 
 | Componente | Stato |
 |------------|-------|
-| Backend systemd | attivo su `127.0.0.1:8015` |
-| Reverse proxy Caddy | attivo su `443` HTTPS |
-| Hostname DuckDNS | `sborraparle.duckdns.org` aggiornato via cron |
-| Frontend GitHub Pages | deployato automaticamente via CI |
-| Database SQLite | 555 eventi, 85 partite, 79 vinte |
+| Frontend di gioco | template unico in `src/template_parole.html`, con modalita' daily/infinita, stato locale, sync daily da backend e refresh automatico al ritorno sulla scheda |
+| Build | pipeline centrata su `build.py`, con export Pages tramite `build_github_pages.py` e iniezione di vocabolario + definizioni nel template |
+| Backend | `serve_local.py` resta il backend unico del progetto: static serving + API + SQLite |
+| Deploy statico | workflow GitHub Pages presente e operativo nel repo |
+| Runtime backend | wrapper `run_backend_service.sh` e asset deploy (`systemd`, `Caddy`, `DuckDNS`) presenti e documentati |
+| Analytics | report standard + due report ad hoc sulle ultime due settimane presenti in `docs/` |
+| Database SQLite | `1196` eventi totali registrati, ultimo evento `2026-04-18 10:50:11` |
 
-### Metriche playtest
+### Metriche e osservazioni correnti
 
-- **Win rate**: 92.9% (79/85)
-- **Media tentativi nelle vittorie**: 4.15
-- **IP distinti**: 26
-- **Apertura più usata**: `sedia` (14 partite)
-- **Soluzioni perse**: largo, bitta, bulbo, punge, tonno, emiro
-- **Guess rifiutati più tentati**: `froci` (3 tentativi, non nel vocabolario)
-- **Parola giornaliera attuale** (2026-04-09): `tosse`
+- Il DB contiene oggi `1196` eventi grezzi; di questi `1118` sono traffico pubblico e `78` sono test locali/tecnici.
+- Nei report sulle ultime 2 settimane (finestra `2026-04-04 -> 2026-04-17`) risultano `32` giocatori unici pubblici, `124` sessioni, `66` daily e `58` non-daily.
+- Il flusso medio del periodo e' `8.86` sessioni/giorno, `4.57` utenti/giorno e `52.29` eventi/giorno.
+- La daily oggi appare leggermente piu' efficiente della infinita: meno tentativi medi e win rate piu' alto.
+- Il traffico resta concentrato: i primi 6 client generano oltre meta' delle sessioni del periodo analizzato.
 
 ### Vocabolario finale
 
-- 1319 soluzioni (classificate su 5 livelli di difficoltà)
-- 7802 parole accettate come tentativo
+- La build corrente del `2026-04-18` riporta `1319` soluzioni e `7804` tentativi.
+- Gli override editoriali sono ora esternalizzati in `data/vocabolario.json`.
+- Le definizioni brevi delle soluzioni sono ora versionate in `data/definizioni.json` e iniettate nel frontend come `DEFINIZIONI`.
+- Il `build_log.md` attuale registra anche il riepilogo override: `42` comuni, `16` da_rimuovere, `5` aggiunte, `91` override di livello.
+- `dist/` e `docs/build_log.md` risultano ora riallineati sui conteggi del vocabolario.
+
+### Punto di maturita' del progetto
+
+Ad oggi il progetto non e' piu' solo un prototipo front-end:
+- ha una pipeline di build chiara
+- ha un backend leggero ma stabile
+- ha deploy statico separato dal backend
+- ha logging persistente reale
+- ha gia' iniziato a produrre analisi di prodotto, non solo log tecnici
+
+Il principale passo successivo non e' tanto "farlo funzionare", quanto consolidare e automatizzare meglio cio' che gia' funziona: riallineare build/documentazione, dare forma stabile ai report analytics e decidere come usare i dati per tarare vocabolario e modalita'.
 
 ---
 

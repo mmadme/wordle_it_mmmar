@@ -41,7 +41,7 @@ src/
 dist/                       output del build (non versionato)
   parole-infinito.html      gioco finale giocabile
   parole_soluzioni.txt      1319 parole soluzione
-  parole_tentativi.txt      7802 parole accettate come tentativo
+  parole_tentativi.txt      7804 parole accettate come tentativo
   api-config.js             URL backend per l'ambiente locale
 
 github_pages/               pacchetto statico per GitHub Pages (non versionato)
@@ -52,6 +52,8 @@ github_pages/               pacchetto statico per GitHub Pages (non versionato)
   .nojekyll
 
 data/
+  vocabolario.json          override editoriali versionati del vocabolario
+  definizioni.json          definizioni brevi delle parole soluzione, iniettate nel frontend
   playtest.db               database SQLite eventi (non versionato)
   playtest_events.csv       export CSV (non versionato)
 
@@ -81,7 +83,7 @@ docs/
   build_history.md          storico build
   stato_progetto.md         fotografia iniziale del progetto
 
-build.py                    generatore principale: fetch dizionari, filtraggio, classificazione difficoltà, build HTML
+build.py                    generatore principale: fetch dizionari, override editoriali, definizioni, classificazione difficoltà, build HTML
 build_github_pages.py       esporta il pacchetto GitHub Pages da dist/
 serve_local.py              backend HTTP + API SQLite
 report_playtest.py          genera report CSV e markdown dal database
@@ -92,33 +94,45 @@ share_public.sh             avvio rapido backend su VPS
 
 ## Vocabolario
 
-Il vocabolario viene generato da `build.py` a partire da sorgenti esterne (dizionari wordle-it su GitHub) con un pipeline di filtraggio e classificazione:
+Il vocabolario viene generato da `build.py` a partire da sorgenti esterne (dizionari wordle-it su GitHub) con una pipeline di filtraggio e classificazione.
+
+Le decisioni editoriali non sono piu' hardcoded nel codice Python: oggi sono versionate in `data/vocabolario.json`, che contiene:
+- parole sempre comuni da forzare a `bassissima`
+- parole da rimuovere dalle `soluzioni` ma lasciare nei `tentativi`
+- aggiunte manuali da iniettare nel vocabolario
+- override manuali di livello (`altissima`, `alta`, `media`, `bassa`)
+
+Le definizioni brevi delle parole soluzione sono invece in `data/definizioni.json`: durante la build vengono serializzate dentro il blocco JS del template come costante `DEFINIZIONI`, cosi' il frontend puo' mostrarle senza dipendere da chiamate runtime.
 
 **Filtraggio soluzioni:**
 - solo parole di 5 lettere con almeno una vocale
 - rimosse forme verbali troppo specifiche (passato remoto in -ai/-ii, congiuntivi rari)
 - rimossi cluster di parole troppo simili (famiglie con 6+ varianti)
 - rimossi forestierismi non integrati
-- alcune parole aggiunte manualmente (`froci`, `negra`)
+- alcune parole aggiunte manualmente (`froci`, `negra`, `negri`, `negro`, `troia`)
 
 **Classificazione difficoltà** (5 livelli):
 
 | Livello | N. parole | Criteri |
 |---------|-----------|---------|
-| Bassissima | 405 | parole molto comuni, bassa rarità lettere |
-| Bassa | 320 | parole comuni |
-| Media | 322 | rarità media |
-| Alta | 197 | lettere rare, doppie, pochi caratteri unici |
-| Altissima | 75 | rarità estrema + sovrascrittura manuale |
+| Bassissima | 348 | parole molto comuni, bassa rarità lettere |
+| Bassa | 287 | parole comuni o abbassate da override editoriale |
+| Media | 239 | rarità media o override a livello medio |
+| Alta | 374 | lettere rare, doppie, pochi caratteri unici o override alto |
+| Altissima | 71 | rarità estrema + override manuale |
 
 **Pesi estrazione:**
 
 | Modalità | Bassissima | Bassa | Media | Alta | Altissima |
 |----------|-----------|-------|-------|------|-----------|
-| Infinita | 30% | 25% | 25% | 15% | 5% |
-| Giornaliera | 20% | 25% | 30% | 20% | 5% |
+| Infinita facile | 45% | 30% | 15% | 8% | 2% |
+| Infinita media | 25% | 25% | 25% | 18% | 7% |
+| Infinita difficile | 5% | 10% | 20% | 35% | 30% |
+| Giornaliera | 10% | 20% | 35% | 25% | 10% |
 
-**Risultato finale:** 1319 soluzioni, 7802 tentativi accettati.
+**Risultato finale attuale:** 1319 soluzioni, 7804 tentativi accettati.
+
+Il file `docs/build_log.md` ora logga anche quale `vocabolario.json` e' stato caricato e quanti override contiene per categoria.
 
 ## Avvio locale
 
@@ -168,6 +182,10 @@ Endpoint API:
 - `GET /api/daily` → metadati daily (challenge_id, daily_no, resets_at, timezone)
 - `POST /api/attempt` → registra un evento di gioco nel database SQLite
 
+Nel frontend la daily viene anche ricontrollata quando la scheda torna visibile o riceve `focus`, cosi' una pagina lasciata aperta su mobile non resta bloccata sulla parola del giorno precedente dopo mezzanotte `Europe/Rome`.
+
+Nel popup di fine partita, accanto alla parola soluzione, compare anche un pulsante `ⓘ` quando quella parola ha una voce in `DEFINIZIONI`: il click apre e richiude una definizione breve direttamente nel modal finale.
+
 Variabili d'ambiente principali (file `.env` o `/etc/woordle-backend-test.env`):
 
 ```
@@ -193,13 +211,15 @@ python3 report_playtest.py
 
 Genera `data/playtest_events.csv` e aggiorna `docs/playtest_report.md`.
 
-Dati attuali (2026-04-09):
+Dati correnti nel DB (2026-04-18, raw):
 
-- 555 eventi registrati
-- 85 partite concluse, 79 vinte (92.9% win rate)
-- 9 IP distinti
-- media tentativi nelle vittorie: 4.15
-- apertura più usata: `sedia` (14 volte)
+- 1196 eventi registrati
+- ultimo evento: `2026-04-18 10:50:11`
+- tabella SQLite unica: `playtest_events`
+
+Per analisi di prodotto piu' utili del report standard ci sono anche:
+- `docs/db_activity_last_2_weeks_2026-04-17.md`
+- `docs/db_activity_manager_summary_2026-04-17.md`
 
 ## CORS
 
@@ -227,6 +247,8 @@ Il backend risponde alle preflight `OPTIONS` e aggiunge gli header `Access-Contr
 - [Changelog](docs/CHANGELOG.md)
 - [Patch Plan](docs/patch.md)
 - [Report Playtest](docs/playtest_report.md)
+- [Activity DB - Last 2 Weeks](docs/db_activity_last_2_weeks_2026-04-17.md)
+- [Activity DB - Executive Summary](docs/db_activity_manager_summary_2026-04-17.md)
 - [Backend systemd](docs/backend_service_systemd.md)
 - [Backend HTTPS Caddy](docs/backend_https_caddy.md)
 - [Backend DuckDNS](docs/backend_hostname_duckdns.md)

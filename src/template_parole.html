@@ -177,6 +177,41 @@ header {
   font-size: 34px; letter-spacing: 4px;
   color: var(--accent); margin: 10px 0 4px;
 }
+.parola-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+.def-btn {
+  background: none;
+  border: 1.5px solid var(--dim);
+  color: var(--dim);
+  border-radius: 50%;
+  width: 26px; height: 26px;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color .15s, border-color .15s;
+}
+.def-btn:hover { color: var(--white); border-color: var(--white); }
+.def-btn.hidden { display: none; }
+.def-box {
+  font-size: 13px;
+  color: var(--dim);
+  min-height: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .25s ease, opacity .2s;
+  opacity: 0;
+  margin: 0 0 4px;
+}
+.def-box.open {
+  max-height: 60px;
+  opacity: 1;
+}
 .modal .sub { color: var(--dim); font-size: 13px; margin-bottom: 18px; }
 .stats-row {
   display: grid; grid-template-columns: repeat(4, 1fr);
@@ -312,8 +347,12 @@ header { flex-wrap: wrap; row-gap: 6px; }
   <div class="modal">
     <button class="close-btn" id="c-end">✕</button>
     <h2 id="end-titolo"></h2>
-    <div class="parola" id="end-parola"></div>
-    <div class="sub"    id="end-sub"></div>
+    <div class="parola-row">
+      <div class="parola" id="end-parola"></div>
+      <button class="def-btn" id="btn-def" title="Definizione">ⓘ</button>
+    </div>
+    <div class="def-box" id="end-def"></div>
+    <div class="sub" id="end-sub"></div>
     <div class="emoji-grid" id="end-emoji"></div>
     <div class="stats-row">
       <div class="sbox"><div class="snum" id="s1">0</div><div class="slabel">Partite</div></div>
@@ -1580,6 +1619,9 @@ let dailyConfigPromise = null;
 let appReady = false;
 let difficoltaInfinita = "media";
 const DAILY_FETCH_TIMEOUT_MS = 4000;
+const DAILY_REFRESH_DEBOUNCE_MS = 2000;
+let lastDailyRefreshCheckAt = 0;
+let dailyRefreshCheckPromise = null;
 
 // ── Statistiche (localStorage) ──
 function getStatsKey() {
@@ -1793,6 +1835,7 @@ function parolaGiornaliera(dayKey) {
 function resetPartita(parolaSelezionata) {
   parola  = parolaSelezionata;
   sessionId = nuovoId();
+  modalitaDopoChiusura = null;
   griglia = Array.from({length: MAX_RIGHE}, () => Array(LEN).fill(""));
   colori  = Array.from({length: MAX_RIGHE}, () => Array(LEN).fill(""));
   riga = 0;
@@ -1885,6 +1928,38 @@ async function avviaPartitaGiornaliera() {
   }
   giornoPartita = currentDaily.day_key;
   resetPartita(parolaGiornalieraDaNumero(currentDaily.daily_no));
+}
+function dailyIdentityInUso() {
+  const saved = caricaStatoPartita(DAILY_STATE_KEY);
+  return {
+    challengeId: dailyConfig?.challenge_id || saved?.challengeId || null,
+    dayKey: giornoPartita || dailyConfig?.day_key || saved?.giornoPartita || null
+  };
+}
+async function controllaAggiornamentoDaily() {
+  if (!appReady || modalita !== "giornaliera") return;
+
+  const now = Date.now();
+  if (dailyRefreshCheckPromise) return dailyRefreshCheckPromise;
+  if (now - lastDailyRefreshCheckAt < DAILY_REFRESH_DEBOUNCE_MS) return;
+  lastDailyRefreshCheckAt = now;
+
+  dailyRefreshCheckPromise = (async () => {
+    const currentDaily = dailyIdentityInUso();
+    const latestDaily = await caricaDailyConfig(true);
+    if (!appReady || modalita !== "giornaliera") return;
+
+    const challengeChanged = !!currentDaily.challengeId && currentDaily.challengeId !== latestDaily.challenge_id;
+    const dayChanged = !!currentDaily.dayKey && currentDaily.dayKey !== latestDaily.day_key;
+    const missingIdentity = !currentDaily.challengeId && !currentDaily.dayKey;
+    if (!challengeChanged && !dayChanged && !missingIdentity) return;
+
+    await avviaPartitaGiornaliera();
+  })().finally(() => {
+    dailyRefreshCheckPromise = null;
+  });
+
+  return dailyRefreshCheckPromise;
 }
 async function impostaModalita(mode, forceNewInfinite = false) {
   modalita = mode === "giornaliera" ? "giornaliera" : "infinita";
@@ -2133,6 +2208,23 @@ function renderFinePartita(vinta, numRighe) {
   document.getElementById("s2").textContent = pct + "%";
   document.getElementById("s3").textContent = s.streak;
   document.getElementById("s4").textContent = s.best;
+
+  // Definizione parola
+  const defBtn = document.getElementById("btn-def");
+  const defBox = document.getElementById("end-def");
+  const def = (typeof DEFINIZIONI !== "undefined") ? DEFINIZIONI[parola] : null;
+  defBtn.onclick = null;
+  defBox.classList.remove("open");
+  defBox.textContent = "";
+  if (def) {
+    defBtn.classList.remove("hidden");
+    defBtn.onclick = () => {
+      const aperta = defBox.classList.toggle("open");
+      defBox.textContent = aperta ? def : "";
+    };
+  } else {
+    defBtn.classList.add("hidden");
+  }
 }
 
 // Override pulito per evitare problemi di encoding nel popup finale.
@@ -2366,6 +2458,14 @@ document.addEventListener("keydown", e => {
   if (e.key === "Backspace") gestisciTasto("⌫");
   else if (e.key === "Enter") gestisciTasto("INVIO");
   else gestisciTasto(e.key);
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    void controllaAggiornamentoDaily();
+  }
+});
+window.addEventListener("focus", () => {
+  void controllaAggiornamentoDaily();
 });
 
 document.getElementById("btn-stats").addEventListener("click", mostraStats);

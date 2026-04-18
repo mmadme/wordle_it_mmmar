@@ -1,0 +1,41 @@
+{
+  "sempre_comuni": [
+    "acqua", "aiuto", "amore", "amici", "banca", "barca", "carne", "carta",
+    "causa", "cielo", "cuore", "danno", "donna", "ferro", "festa", "fiore",
+    "forza", "gatto", "gioco", "hotel", "latte", "madre", "metro", "mondo",
+    "notte", "padre", "paese", "parte", "porta", "prato", "regno", "ruota",
+    "sasso", "scena", "sedia", "serra", "sogno", "suono", "tempo", "terra",
+    "testa", "vento"
+  ],
+  "da_rimuovere": [
+    "bidet", "biada", "bitta", "cruna", "sport", "torba", "alice", "nuche",
+    "avolo", "oneri", "acume", "bulbo", "pepsi", "birba", "calca", "pigli"
+  ],
+  "aggiunte": [
+    "froci", "negra", "negro", "negri", "troia"
+  ],
+  "override_livello": {
+    "altissima": [
+      "amala", "gamma", "orgia", "tesse", "tonno", "adula", "beffa", "lutto",
+      "vinti", "imita", "grata"
+    ],
+    "alta": [
+      "prete", "punge", "serpe", "greco", "omega", "colgo", "baffi", "rossa",
+      "folle", "motto", "assai", "plico", "reame", "agave", "avena", "ligio",
+      "obolo", "paggi", "ruolo", "sozza", "tedio"
+    ],
+    "media": [
+      "blusa", "museo", "scova", "tosse", "boato", "calce", "erica", "esigo",
+      "fauci", "foibe", "fulva", "gemma", "manzo", "messa", "mossa", "paghe",
+      "palio", "pizzo", "rotta", "spago", "stiro", "stiva", "svelo", "zucca",
+      "zuppa"
+    ],
+    "bassa": [
+      "furia", "iride", "lorde", "perde", "treno", "umida", "breve", "buono",
+      "chilo", "cigno", "clima", "conto", "denti", "fasce", "felce", "fiera",
+      "grida", "ladro", "lepri", "scala", "scemi", "sordi", "suono", "tango",
+      "targa", "tasto", "tenda", "tomba", "vermi", "troia", "negro", "negra",
+      "negri", "froci"
+    ]
+  }
+}
