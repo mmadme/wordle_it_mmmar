@@ -231,7 +231,7 @@ header {
 .snum {
   font-family: 'Archivo Black', sans-serif;
   font-size: 22px;
-  color: var(--accent);
+  color: var(--white);
 }
 .slabel { font-size: 11px; color: var(--dim); line-height: 1.4; }
 .emoji-grid { font-size: 22px; line-height: 1.7; margin: 10px 0; letter-spacing: 1px; }
@@ -276,6 +276,13 @@ header {
   flex: 1;
   padding: 13px;
   margin-top: 0;
+}
+.end-footer-row.solo-share .end-timer {
+  display: none;
+}
+.end-footer-row.solo-share .end-share-btn {
+  width: 100%;
+  flex: 1 1 100%;
 }
 .close-btn {
   position: absolute; top: 12px; right: 14px;
@@ -2348,12 +2355,16 @@ function renderFinePartita(vinta, numRighe) {
   renderDistribuzione("end-dist", true);
 
   const timerEl = document.getElementById("end-timer");
+  const footerRow = document.querySelector(".end-footer-row");
   if (_endTimerInterval) {
     clearInterval(_endTimerInterval);
     _endTimerInterval = null;
   }
 
+  if (footerRow) footerRow.classList.remove("solo-share");
+
   if (timerEl) {
+    timerEl.style.display = "";
     if (modalita === "giornaliera") {
       const resetAtMs = Date.parse(dailyConfig?.resets_at || "");
       if (Number.isFinite(resetAtMs)) {
@@ -2377,6 +2388,8 @@ function renderFinePartita(vinta, numRighe) {
       }
     } else {
       timerEl.innerHTML = "";
+      timerEl.style.display = "none";
+      if (footerRow) footerRow.classList.add("solo-share");
     }
   }
 
