@@ -230,7 +230,8 @@ header {
 }
 .snum {
   font-family: 'Archivo Black', sans-serif;
-  font-size: 22px; color: var(--accent);
+  font-size: 22px;
+  color: var(--accent);
 }
 .slabel { font-size: 11px; color: var(--dim); line-height: 1.4; }
 .emoji-grid { font-size: 22px; line-height: 1.7; margin: 10px 0; letter-spacing: 1px; }
@@ -1635,6 +1636,7 @@ let col        = 0;
 let finita     = false;
 let tasti      = {};  // lettera → colore migliore sulla tastiera
 
+const INFINITE_STATS_KEY    = "parole_inf_stats";
 const INFINITE_STATS_PREFIX = "parole_stats_infinita_";
 const DAILY_STATS_KEY    = "parole_daily_stats";
 const GAME_KEY           = "parole_inf_game_no";
@@ -1667,9 +1669,28 @@ function getStatsKey() {
   return `${INFINITE_STATS_PREFIX}${difficoltaInfinita}`;
 }
 function getStats() {
-  const d = { played:0, won:0, streak:0, best:0, dist:{1:0,2:0,3:0,4:0,5:0,6:0} };
-  try { return JSON.parse(localStorage.getItem(getStatsKey())) || d; }
-  catch { return d; }
+  const key = getStatsKey();
+  const raw = localStorage.getItem(key);
+  if (raw) return JSON.parse(raw);
+
+  // Migrazione dati storici:
+  // lo storico precedente era un mischione unico salvato sotto
+  // INFINITE_STATS_KEY senza distinzione di livello.
+  // Lo assegniamo interamente a "media" perché era il default.
+  // Facile e difficile partono da zero (corretto: non esistevano).
+  if (modalita === "infinita" && difficoltaInfinita === "media") {
+    const legacy = localStorage.getItem(INFINITE_STATS_KEY);
+    if (legacy) {
+      try {
+        const parsed = JSON.parse(legacy);
+        localStorage.setItem(key, JSON.stringify(parsed));
+        return parsed;
+      } catch(e) {}
+    }
+  }
+
+  return { played:0, won:0, streak:0, best:0,
+           dist:{1:0,2:0,3:0,4:0,5:0,6:0} };
 }
 function saveStats(s) {
   try { localStorage.setItem(getStatsKey(), JSON.stringify(s)); } catch {}
@@ -2356,21 +2377,6 @@ function renderFinePartita(vinta, numRighe) {
       }
     } else {
       timerEl.innerHTML = "";
-    }
-  }
-
-  const footerRow = document.querySelector(".end-footer-row");
-  const btnNuova = document.getElementById("btn-nuova");
-  if (footerRow && btnNuova) {
-    if (modalita === "infinita") {
-      footerRow.appendChild(btnNuova);
-      btnNuova.style.flex = "1";
-      btnNuova.style.marginTop = "0";
-    } else {
-      const modal = footerRow.closest(".modal");
-      if (modal) modal.appendChild(btnNuova);
-      btnNuova.style.flex = "";
-      btnNuova.style.marginTop = "";
     }
   }
 
