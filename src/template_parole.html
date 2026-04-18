@@ -228,7 +228,7 @@ header {
 }
 .snum {
   font-family: 'Archivo Black', sans-serif;
-  font-size: 28px; color: var(--accent);
+  font-size: 22px; color: var(--accent);
 }
 .slabel { font-size: 11px; color: var(--dim); line-height: 1.4; }
 .emoji-grid { font-size: 22px; line-height: 1.7; margin: 10px 0; letter-spacing: 1px; }
@@ -247,6 +247,33 @@ header {
   cursor: pointer; transition: border-color .15s;
 }
 .btn-secondary:hover { border-color: var(--accent); color: var(--white); }
+.end-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.end-timer {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 13px;
+  color: var(--dim);
+  line-height: 1.4;
+  text-align: left;
+  flex: 1;
+}
+.end-timer strong {
+  display: block;
+  font-size: 20px;
+  color: var(--white);
+  letter-spacing: 1px;
+}
+.end-share-btn {
+  flex-shrink: 0;
+  width: auto;
+  padding: 13px 20px;
+  margin-top: 0;
+}
 .close-btn {
   position: absolute; top: 12px; right: 14px;
   background: none; border: none; color: var(--dim);
@@ -359,16 +386,18 @@ header { flex-wrap: wrap; row-gap: 6px; }
       <button class="def-btn" id="btn-def" title="Definizione">ⓘ</button>
     </div>
     <div class="def-box" id="end-def"></div>
-    <div class="emoji-grid" id="end-emoji"></div>
     <div class="stats-row">
       <div class="sbox"><div class="snum" id="s1">0</div><div class="slabel">Partite</div></div>
       <div class="sbox"><div class="snum" id="s2">0</div><div class="slabel">Vinte %</div></div>
       <div class="sbox"><div class="snum" id="s3">0</div><div class="slabel">Streak</div></div>
       <div class="sbox"><div class="snum" id="s4">0</div><div class="slabel">Record</div></div>
     </div>
-    <button class="btn-secondary" id="btn-share">Condividi</button>
-    <button class="btn-primary"   id="btn-nuova">▶ NUOVA PARTITA</button>
-    <button class="btn-secondary" id="btn-close-end">Chiudi</button>
+    <div class="dist" id="end-dist"></div>
+    <div class="end-footer-row">
+      <div class="end-timer" id="end-timer"></div>
+      <button class="btn-secondary end-share-btn" id="btn-share">Condividi</button>
+    </div>
+    <button class="btn-primary" id="btn-nuova">▶ NUOVA PARTITA</button>
   </div>
 </div>
 
@@ -1628,6 +1657,7 @@ const DAILY_FETCH_TIMEOUT_MS = 4000;
 const DAILY_REFRESH_DEBOUNCE_MS = 2000;
 let lastDailyRefreshCheckAt = 0;
 let dailyRefreshCheckPromise = null;
+let _endTimerInterval = null;
 
 // ── Statistiche (localStorage) ──
 function getStatsKey() {
@@ -2190,6 +2220,28 @@ function balza(r, cb) {
   if (cb) setTimeout(cb, LEN * 80 + 500);
 }
 
+function renderDistribuzione(targetId, evidenziaCorrente = false) {
+  const s = getStats();
+  const maxVal = Math.max(...Object.values(s.dist), 1);
+  const tentativiUsati = colori.filter(r => r.some(c => c)).length;
+  const dc = document.getElementById(targetId);
+  if (!dc) return;
+
+  dc.innerHTML = '<div class="dist-title">DISTRIBUZIONE TENTATIVI</div>';
+  for (let i = 1; i <= 6; i++) {
+    const v = s.dist[i] || 0;
+    const pct = Math.max(v / maxVal * 100, 5);
+    const curr = evidenziaCorrente && finita && tentativiUsati === i;
+    dc.innerHTML += `
+      <div class="drow">
+        <span class="dnum">${i}</span>
+        <div class="dbar-bg">
+          <div class="dbar${curr ? " win" : ""}" style="width:${pct}%">${v}</div>
+        </div>
+      </div>`;
+  }
+}
+
 // ══════════════════════════════════════════════════════════
 //  FINE PARTITA
 // ══════════════════════════════════════════════════════════
@@ -2256,10 +2308,12 @@ function renderFinePartita(vinta, numRighe) {
     yellow: "\u{1F7E8}",
     gray: "\u{2B1B}"
   };
-  document.getElementById("end-emoji").textContent =
-    colori.slice(0, vinta ? numRighe : MAX_RIGHE)
-          .map(row => row.map(c => E[c] || "\u{2B1C}").join(""))
-          .join("\n");
+  const endEmoji = document.getElementById("end-emoji");
+  if (endEmoji) {
+    endEmoji.textContent = colori.slice(0, vinta ? numRighe : MAX_RIGHE)
+      .map(row => row.map(c => E[c] || "\u{2B1C}").join(""))
+      .join("\n");
+  }
 
   const s = getStats();
   const pct = s.played ? Math.round(s.won / s.played * 100) : 0;
@@ -2267,10 +2321,45 @@ function renderFinePartita(vinta, numRighe) {
   document.getElementById("s2").textContent = pct + "%";
   document.getElementById("s3").textContent = s.streak;
   document.getElementById("s4").textContent = s.best;
+  renderDistribuzione("end-dist", true);
+
+  const timerEl = document.getElementById("end-timer");
+  if (_endTimerInterval) {
+    clearInterval(_endTimerInterval);
+    _endTimerInterval = null;
+  }
+
+  if (timerEl) {
+    if (modalita === "giornaliera") {
+      const resetAtMs = Date.parse(dailyConfig?.resets_at || "");
+      if (Number.isFinite(resetAtMs)) {
+        function aggiornaTimer() {
+          const diff = resetAtMs - Date.now();
+          if (diff <= 0) {
+            timerEl.innerHTML = "Nuova parola<br><strong>disponibile!</strong>";
+            clearInterval(_endTimerInterval);
+            _endTimerInterval = null;
+            return;
+          }
+          const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
+          const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
+          const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
+          timerEl.innerHTML = `Nuova parola in<strong>${h}:${m}:${s}</strong>`;
+        }
+        aggiornaTimer();
+        _endTimerInterval = setInterval(aggiornaTimer, 1000);
+      } else {
+        timerEl.innerHTML = "Prossima parola<strong>domani</strong>";
+      }
+    } else {
+      timerEl.innerHTML = "";
+    }
+  }
 
   const defBtn = document.getElementById("btn-def");
   const defBox = document.getElementById("end-def");
   const def = (typeof DEFINIZIONI !== "undefined") ? DEFINIZIONI[parola] : null;
+  defBtn.onclick = null;
   defBox.classList.remove("open");
   defBox.textContent = "";
   if (def) {
@@ -2305,6 +2394,7 @@ function finePartita(vinta, numRighe) {
   }
   saveStats(s);
   modalitaDopoChiusura = modalita === "giornaliera" ? "infinita" : null;
+  aggiornaHeader();
   renderFinePartita(vinta, numRighe);
   salvaStatoPartita();
   setTimeout(() => document.getElementById("m-end").classList.add("open"), 600);
@@ -2320,22 +2410,7 @@ function mostraStats() {
   document.getElementById("ss2").textContent = pct + "%";
   document.getElementById("ss3").textContent = s.streak;
   document.getElementById("ss4").textContent = s.best;
-
-  const maxVal = Math.max(...Object.values(s.dist), 1);
-  const dc = document.getElementById("dist");
-  dc.innerHTML = '<div class="dist-title">DISTRIBUZIONE TENTATIVI</div>';
-  for (let i = 1; i <= 6; i++) {
-    const v   = s.dist[i] || 0;
-    const pct = Math.max(v / maxVal * 100, 5);
-    const curr = finita && colori.filter(r => r.some(c => c)).length === i;
-    dc.innerHTML += `
-      <div class="drow">
-        <span class="dnum">${i}</span>
-        <div class="dbar-bg">
-          <div class="dbar${curr ? " win" : ""}" style="width:${pct}%">${v}</div>
-        </div>
-      </div>`;
-  }
+  renderDistribuzione("dist", true);
   document.getElementById("m-stats").classList.add("open");
 }
 
@@ -2462,6 +2537,10 @@ function tile(r, c) { return document.getElementById(`t${r}-${c}`); }
 
 function chiudiModali() {
   document.querySelectorAll(".overlay").forEach(m => m.classList.remove("open"));
+  if (_endTimerInterval) {
+    clearInterval(_endTimerInterval);
+    _endTimerInterval = null;
+  }
   if (modalitaDopoChiusura) {
     const target = modalitaDopoChiusura;
     modalitaDopoChiusura = null;
@@ -2502,7 +2581,6 @@ document.querySelectorAll(".diff-btn").forEach(btn => {
 document.getElementById("btn-help").addEventListener("click",  () => document.getElementById("m-help").classList.add("open"));
 document.getElementById("btn-share").addEventListener("click", condividiRisultato);
 document.getElementById("btn-nuova").addEventListener("click",  nuovaPartita);
-document.getElementById("btn-close-end").addEventListener("click", chiudiModali);
 ["c-end","c-stats","c-help"].forEach(id =>
   document.getElementById(id).addEventListener("click", chiudiModali));
 document.querySelectorAll(".overlay").forEach(ov =>
