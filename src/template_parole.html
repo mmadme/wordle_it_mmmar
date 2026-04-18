@@ -181,22 +181,22 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin: 10px 0 0;
+  gap: 4px;
+  margin: 4px 0 0;
 }
 .def-btn {
   background: none;
-  border: 1.5px solid var(--dim);
+  border: 0;
   color: var(--dim);
-  border-radius: 50%;
-  width: 26px; height: 26px;
-  font-size: 14px;
+  width: auto; height: auto;
+  font-size: 16px;
   cursor: pointer;
   flex-shrink: 0;
   line-height: 1;
-  transition: color .15s, border-color .15s;
+  padding: 0;
+  transition: color .15s;
 }
-.def-btn:hover { color: var(--white); border-color: var(--white); }
+.def-btn:hover { color: var(--white); }
 .def-btn.hidden { display: none; }
 .def-box {
   font-size: 13px;
@@ -212,7 +212,12 @@ header {
   max-height: 60px;
   opacity: 1;
 }
-.modal .sub { color: var(--dim); font-size: 13px; margin-bottom: 18px; }
+.modal .sub {
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
 .stats-row {
   display: grid; grid-template-columns: repeat(4, 1fr);
   gap: 8px; margin: 14px 0;
@@ -347,12 +352,12 @@ header { flex-wrap: wrap; row-gap: 6px; }
   <div class="modal">
     <button class="close-btn" id="c-end">✕</button>
     <h2 id="end-titolo"></h2>
+    <div class="sub" id="end-sub"></div>
     <div class="parola-row">
       <div class="parola" id="end-parola"></div>
       <button class="def-btn" id="btn-def" title="Definizione">ⓘ</button>
     </div>
     <div class="def-box" id="end-def"></div>
-    <div class="sub" id="end-sub"></div>
     <div class="emoji-grid" id="end-emoji"></div>
     <div class="stats-row">
       <div class="sbox"><div class="snum" id="s1">0</div><div class="slabel">Partite</div></div>
