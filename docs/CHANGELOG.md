@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-04-26 - Hardening documentazione pubblica e fix reachability
+
+### Modificato
+
+- `serve_local.py` corretto in `log_message()` per evitare eccezioni su richieste HTTP malformate ricevute prima dell'inizializzazione di `self.headers`.
+- `README.md` ripulito dalle sezioni operative del backend e dagli esempi pubblici troppo dettagliati sull'infrastruttura.
+- `build_github_pages.py` aggiornato per usare solo hostname placeholder negli errori e negli esempi.
+- `.github/workflows/github-pages.yml` aggiornato per usare solo hostname placeholder nel messaggio di validazione della secret.
+- `docs/backend_management.md` aggiornato con la diagnostica reale del caso `443` in timeout: listener Caddy attivo, Security List OCI corretta ma blocco locale in `iptables`.
+- `docs/backend_https_caddy.md` aggiornato con una nota esplicita sul fatto che `80/443` vanno aperte sia su OCI sia nel firewall locale della VM.
+
+### Verificato
+
+- `curl -k --resolve <backend-domain>:443:127.0.0.1 https://<backend-domain>/api/daily` con risposta JSON valida
+- raggiungibilita' pubblica di `443` ripristinata dopo l'apertura delle regole `iptables` sulla VM
+- `curl https://<backend-domain>/api/daily` con risposta `200`
+
 ## 2026-04-06 - Daily backend-driven e fix IP dietro proxy
 
 ### Modificato

@@ -279,7 +279,56 @@ Poi verifica:
 curl -I https://<backend-domain>
 ```
 
-### 3. Dopo reboot non parte
+### 3. Il dominio risolve ma `443` va in timeout
+
+Sintomo tipico:
+
+- `nslookup <backend-domain>` restituisce l'IP giusto
+- `curl https://<backend-domain>/api/daily` da un client esterno va in timeout
+- `curl --resolve <backend-domain>:443:127.0.0.1 https://<backend-domain>/api/daily` dalla VPS funziona
+
+In questo caso il problema non e' quasi mai il backend Python: di solito il traffico si ferma prima di arrivare a Caddy.
+
+Controlli consigliati:
+
+- regole ingress `80/443` in Oracle Cloud
+- eventuale NSG associato alla VNIC
+- firewall della VM (`iptables` / `nftables`)
+
+Nota pratica importante:
+
+- aprire `80/443` nella Security List OCI non basta se la VM ha regole locali piu' restrittive
+- una chain `INPUT` con `REJECT` finale e senza `ACCEPT` esplicito per `80` e `443` blocca comunque il traffico pubblico
+
+Comandi utili:
+
+```bash
+sudo ss -ltnp | grep ':443'
+sudo iptables -L INPUT -n --line-numbers
+curl -k --resolve <backend-domain>:443:127.0.0.1 https://<backend-domain>/api/daily
+```
+
+Interpretazione:
+
+- se l'ultimo comando funziona, Caddy e backend sono sani localmente
+- se dall'esterno `443` continua a fallire, il blocco e' tra Internet e la VM
+
+### 4. Errori `AttributeError ... headers` nel journal
+
+Se in passato compaiono errori simili a:
+
+```text
+AttributeError: 'PlaytestHandler' object has no attribute 'headers'
+```
+
+la causa e' una richiesta HTTP malformata arrivata prima che `self.headers` fosse inizializzato.
+
+Stato attuale:
+
+- `serve_local.py` e' stato corretto per usare `self.headers` solo quando presente
+- il problema non dovrebbe piu' ripresentarsi dopo il riavvio del servizio aggiornato
+
+### 5. Dopo reboot non parte
 
 Controlla:
 
@@ -319,3 +368,4 @@ python3 report_playtest.py
 - i log migliori sono quelli di `journalctl`
 - la fonte dati principale e' sempre `data/playtest.db`
 - il CSV e il report sono viste derivate, non la fonte primaria
+- la porta `8015` dovrebbe restare interna alla VM; il frontend pubblico dovrebbe passare solo da `80/443`

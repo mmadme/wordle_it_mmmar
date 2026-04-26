@@ -47,6 +47,11 @@ Dominio previsto:
   - nel firewall della VM
 - hostname backend che risolve verso la VPS
 
+Nota:
+
+- le Security List OCI da sole non bastano
+- se la VM ha `iptables` con `REJECT` finale e senza `ACCEPT` per `80/443`, il dominio risolve ma i client esterni vedono timeout
+
 ## File preparati nel progetto
 
 - `deploy/caddy/Caddyfile.example`
@@ -154,6 +159,25 @@ Verificare nella VCN/subnet dell'istanza:
 - la VNIC dell'istanza deve avere Public IPv4 attivo
 
 Questi controlli restano utili come diagnosi se HTTPS smette di funzionare dopo modifiche DNS, firewall o reboot infrastrutturali.
+
+## Firewall locale della VM
+
+Su questa variante il blocco piu' insidioso e' stato proprio qui: OCI aveva `80/443` aperte, Caddy ascoltava su `*:443`, ma la VM rifiutava comunque il traffico perche' `iptables` non aveva regole `ACCEPT` esplicite per `80` e `443`.
+
+Controlli minimi:
+
+```bash
+sudo ss -ltnp | grep ':443'
+sudo iptables -L INPUT -n --line-numbers
+curl -k --resolve <backend-domain>:443:127.0.0.1 https://<backend-domain>/api/daily
+```
+
+Se il `curl --resolve ... 127.0.0.1` funziona ma il client esterno no, il backend e Caddy sono sani e il problema e' di raggiungibilita' pubblica.
+
+Obiettivo finale consigliato:
+
+- pubblico solo `80/443`
+- backend Python raggiungibile solo internamente su `127.0.0.1:8015`
 
 ## CORS dopo GitHub Pages
 

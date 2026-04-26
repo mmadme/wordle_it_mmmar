@@ -36,6 +36,15 @@ jobs:
       - name: Verify Python files
         run: python3 -m py_compile build.py build_github_pages.py serve_local.py report_playtest.py
 
+      - name: Verify Pages API base
+        run: |
+          if [ -z "${PAGES_API_BASE}" ]; then
+            echo "PAGES_API_BASE_URL secret is empty or missing."
+            echo "Set it to the public HTTPS backend URL, for example:"
+            echo "  https://backend.example.com"
+            exit 1
+          fi
+
       - name: Build GitHub Pages package
         run: python3 build_github_pages.py --api-base "${PAGES_API_BASE}"
 

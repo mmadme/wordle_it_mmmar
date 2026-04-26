@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--api-base",
-        default="",
+        required=True,
         help="Valore da scrivere in api-config.js, ad esempio https://api.example.com",
     )
     parser.add_argument(
@@ -46,6 +46,11 @@ def build_project() -> None:
 
 def write_api_config(path: Path, api_base: str) -> None:
     normalized = normalize_api_base_url(api_base)
+    if not normalized:
+        raise SystemExit(
+            "api-base mancante: per GitHub Pages serve un backend HTTPS pubblico, "
+            "ad esempio https://backend.example.com"
+        )
     path.write_text(
         (
             "// Configurazione frontend per GitHub Pages.\n"

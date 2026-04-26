@@ -259,14 +259,17 @@ class PlaytestHandler(http.server.SimpleHTTPRequestHandler):
             return
         message = format % args
         peer_ip = self.client_address[0]
-        remote_ip = resolve_remote_ip(self.headers, peer_ip)
+        headers = getattr(self, "headers", None)
+        remote_ip = resolve_remote_ip(headers, peer_ip) if headers is not None else peer_ip
+        command = getattr(self, "command", "<unknown>")
+        path = getattr(self, "path", "<unknown>")
         if remote_ip != peer_ip:
             print(
                 f"[{self.log_date_time_string()}] peer={peer_ip} remote={remote_ip} "
-                f"{self.command} {self.path} -> {message}"
+                f"{command} {path} -> {message}"
             )
             return
-        print(f"[{self.log_date_time_string()}] {peer_ip} {self.command} {self.path} -> {message}")
+        print(f"[{self.log_date_time_string()}] {peer_ip} {command} {path} -> {message}")
 
     def handle_attempt(self) -> None:
         try:
