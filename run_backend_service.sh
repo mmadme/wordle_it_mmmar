@@ -5,7 +5,7 @@ set -euo pipefail
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${WOORDLE_BACKEND_ENV_FILE:-$BASE_DIR/deploy/backend.env}"
 
-BACKEND_HOST="0.0.0.0"
+BACKEND_HOST="127.0.0.1"
 BACKEND_PORT="8015"
 BACKEND_ALLOW_ORIGINS="*"
 BACKEND_LOG_HTTP="0"

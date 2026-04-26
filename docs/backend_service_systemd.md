@@ -28,7 +28,7 @@ Obiettivo:
 
 Per il backend remoto attuale:
 
-- host: `0.0.0.0`
+- host: `127.0.0.1`
 - porta: `8015`
 - origine consentita: inizialmente `*` oppure il dominio frontend effettivo
 
@@ -76,7 +76,7 @@ sudo nano /etc/woordle-backend-test.env
 Contenuto iniziale consigliato:
 
 ```bash
-BACKEND_HOST=0.0.0.0
+BACKEND_HOST=127.0.0.1
 BACKEND_PORT=8015
 BACKEND_ALLOW_ORIGINS=*
 BACKEND_LOG_HTTP=1
@@ -136,7 +136,7 @@ sudo nano /etc/woordle-backend.env
 Contenuto iniziale consigliato:
 
 ```bash
-BACKEND_HOST=0.0.0.0
+BACKEND_HOST=127.0.0.1
 BACKEND_PORT=8015
 BACKEND_ALLOW_ORIGINS=*
 BACKEND_LOG_HTTP=0
