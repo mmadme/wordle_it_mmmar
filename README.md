@@ -23,7 +23,7 @@ Il gioco funziona interamente nel browser. Il backend è opzionale per la modali
 ```
 GitHub Pages (frontend)     https://<user>.github.io/<repo>/
         ↓ CORS
-Caddy (reverse proxy)       https://sborraparle.duckdns.org  (443)
+Caddy (reverse proxy)       https://example.duckdns.org  (443)
         ↓ loopback
 Backend Python              http://127.0.0.1:8015
         ↓
