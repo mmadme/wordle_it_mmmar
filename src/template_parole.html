@@ -455,6 +455,17 @@ header { flex-wrap: wrap; row-gap: 6px; }
   </div>
 </div>
 
+<!-- modale sincronizzazione daily -->
+<div class="overlay" id="m-sync">
+  <div class="modal">
+    <button class="close-btn" id="c-sync">✕</button>
+    <h2 id="sync-title"></h2>
+    <div class="sub" id="sync-msg"></div>
+    <button class="btn-primary" id="sync-primary">OK</button>
+    <button class="btn-secondary" id="sync-secondary">Gioca infinita</button>
+  </div>
+</div>
+
 <script src="./api-config.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
@@ -1664,6 +1675,7 @@ let dailyConfig = null;
 let dailyConfigPromise = null;
 let appReady = false;
 let difficoltaInfinita = "media";
+let confermaInCorso = false;
 const DAILY_FETCH_TIMEOUT_MS = 4000;
 const DAILY_REFRESH_DEBOUNCE_MS = 2000;
 let lastDailyRefreshCheckAt = 0;
@@ -1814,17 +1826,6 @@ function dailyConfigScaduta() {
   const resetAtMs = Date.parse(dailyConfig?.resets_at || "");
   return Number.isFinite(resetAtMs) && Date.now() >= resetAtMs;
 }
-function buildLocalDailyConfig() {
-  const dayKey = giornoLocale();
-  const dailyNo = numeroSfidaGiornaliera(dayKey);
-  return {
-    challenge_id: `daily-${dailyNo}`,
-    daily_no: dailyNo,
-    day_key: dayKey,
-    timezone: "browser-local",
-    resets_at: null
-  };
-}
 async function caricaDailyConfig(force = false) {
   if (!force && dailyConfig && !dailyConfigScaduta()) return dailyConfig;
   if (!force && dailyConfigPromise) return dailyConfigPromise;
@@ -1851,12 +1852,9 @@ async function caricaDailyConfig(force = false) {
       dailyConfig = payload;
       return dailyConfig;
     } catch (err) {
-      console.warn("Fallback daily locale:", err);
-      dailyConfig = buildLocalDailyConfig();
-      if (appReady) {
-        toast("Backend daily non raggiungibile: uso fallback locale");
-      }
-      return dailyConfig;
+      console.warn("Daily backend non raggiungibile:", err);
+      dailyConfig = null;
+      throw err;
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
       dailyConfigPromise = null;
@@ -2013,7 +2011,13 @@ async function controllaAggiornamentoDaily() {
 
   dailyRefreshCheckPromise = (async () => {
     const currentDaily = dailyIdentityInUso();
-    const latestDaily = await caricaDailyConfig(true);
+    let latestDaily;
+    try {
+      latestDaily = await caricaDailyConfig(true);
+    } catch {
+      mostraDailyNonDisponibile();
+      return;
+    }
     if (!appReady || modalita !== "giornaliera") return;
 
     const challengeChanged = !!currentDaily.challengeId && currentDaily.challengeId !== latestDaily.challenge_id;
@@ -2032,9 +2036,16 @@ async function impostaModalita(mode, forceNewInfinite = false) {
   modalita = mode === "giornaliera" ? "giornaliera" : "infinita";
   saveModalita(modalita);
   aggiornaHeader();
-  chiudiModali();
-  if (modalita === "giornaliera") await avviaPartitaGiornaliera();
-  else avviaPartitaInfinita(forceNewInfinite);
+  chiudiModali({ applicaPostChiusura: false });
+  if (modalita === "giornaliera") {
+    try {
+      await avviaPartitaGiornaliera();
+    } catch {
+      mostraDailyNonDisponibile();
+    }
+  } else {
+    avviaPartitaInfinita(forceNewInfinite);
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2121,8 +2132,18 @@ function cancella() {
   salvaStatoPartita();
 }
 
-function conferma() {
+async function conferma() {
+  if (confermaInCorso) return;
   if (col < LEN) { scuoti(riga); toast("Parola troppo corta"); return; }
+  if (modalita === "giornaliera") {
+    confermaInCorso = true;
+    try {
+      const dailyAllineata = await sincronizzaDailyPrimaDelTentativo();
+      if (!dailyAllineata) return;
+    } finally {
+      confermaInCorso = false;
+    }
+  }
   const tentativo = griglia[riga].join("");
   if (!TENTATIVI.has(tentativo)) {
     inviaPlaytest({
@@ -2463,6 +2484,80 @@ function toast(msg) {
   _toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
 }
 
+function mostraPopupSync(titolo, messaggio, primaryText = "OK", primaryAction = null, secondaryText = "", secondaryAction = null) {
+  const modal = document.getElementById("m-sync");
+  const primary = document.getElementById("sync-primary");
+  const secondary = document.getElementById("sync-secondary");
+
+  document.getElementById("sync-title").textContent = titolo;
+  document.getElementById("sync-msg").textContent = messaggio;
+  primary.textContent = primaryText;
+  primary.onclick = () => {
+    chiudiModali({ applicaPostChiusura: false });
+    if (primaryAction) primaryAction();
+  };
+
+  if (secondaryText && secondaryAction) {
+    secondary.textContent = secondaryText;
+    secondary.style.display = "";
+    secondary.onclick = () => {
+      chiudiModali({ applicaPostChiusura: false });
+      secondaryAction();
+    };
+  } else {
+    secondary.style.display = "none";
+    secondary.onclick = null;
+  }
+
+  modal.classList.add("open");
+}
+
+function passaAInfinita(forceNew = false) {
+  modalita = "infinita";
+  saveModalita(modalita);
+  aggiornaHeader();
+  chiudiModali({ applicaPostChiusura: false });
+  avviaPartitaInfinita(forceNew);
+}
+
+function mostraDailyNonDisponibile() {
+  passaAInfinita(false);
+  mostraPopupSync(
+    "24H non disponibile",
+    "Non riesco a sincronizzare la parola del giorno. Per evitare una partita non allineata ti ho portato alla modalità infinita.",
+    "Gioca infinita"
+  );
+}
+
+function mostraSessioneAggiornata() {
+  mostraPopupSync(
+    "Sessione aggiornata",
+    "La parola del giorno è cambiata. Ho caricato la nuova sfida: inserisci di nuovo il tentativo.",
+    "OK"
+  );
+}
+
+async function sincronizzaDailyPrimaDelTentativo() {
+  const currentDaily = dailyIdentityInUso();
+  let latestDaily;
+  try {
+    latestDaily = await caricaDailyConfig(true);
+  } catch {
+    mostraDailyNonDisponibile();
+    return false;
+  }
+
+  const challengeChanged = !!currentDaily.challengeId && currentDaily.challengeId !== latestDaily.challenge_id;
+  const dayChanged = !!currentDaily.dayKey && currentDaily.dayKey !== latestDaily.day_key;
+  const missingIdentity = !currentDaily.challengeId && !currentDaily.dayKey;
+  if (!challengeChanged && !dayChanged && !missingIdentity) return true;
+
+  giornoPartita = latestDaily.day_key;
+  resetPartita(parolaGiornalieraDaNumero(latestDaily.daily_no));
+  mostraSessioneAggiornata();
+  return false;
+}
+
 function challengeIdCorrente() {
   return modalita === "giornaliera" ? challengeDailyCorrente() : `inf-${numeroPartita}`;
 }
@@ -2572,13 +2667,14 @@ async function condividiRisultato() {
 // ══════════════════════════════════════════════════════════
 function tile(r, c) { return document.getElementById(`t${r}-${c}`); }
 
-function chiudiModali() {
+function chiudiModali(options = {}) {
   document.querySelectorAll(".overlay").forEach(m => m.classList.remove("open"));
   if (_endTimerInterval) {
     clearInterval(_endTimerInterval);
     _endTimerInterval = null;
   }
-  if (modalitaDopoChiusura) {
+  const applicaPostChiusura = options?.applicaPostChiusura !== false;
+  if (applicaPostChiusura && modalitaDopoChiusura) {
     const target = modalitaDopoChiusura;
     modalitaDopoChiusura = null;
     impostaModalita(target, true);
@@ -2618,7 +2714,7 @@ document.querySelectorAll(".diff-btn").forEach(btn => {
 document.getElementById("btn-help").addEventListener("click",  () => document.getElementById("m-help").classList.add("open"));
 document.getElementById("btn-share").addEventListener("click", condividiRisultato);
 document.getElementById("btn-nuova").addEventListener("click",  nuovaPartita);
-["c-end","c-stats","c-help"].forEach(id =>
+["c-end","c-stats","c-help","c-sync"].forEach(id =>
   document.getElementById(id).addEventListener("click", chiudiModali));
 document.querySelectorAll(".overlay").forEach(ov =>
   ov.addEventListener("click", e => { if (e.target === ov) chiudiModali(); }));
